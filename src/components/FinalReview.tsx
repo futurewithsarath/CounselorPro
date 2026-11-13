@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { StudentProfile, WebOption, MockAllotmentResult } from '../types';
 import { COLLEGES_DB, COLLEGES_DATASET_METADATA, COLLEGES_SOURCE_YEAR, getCollegeCutoff, getEligibleCutoff, getCollegesForStream, isCollegeAvailableToGender, hasLocalAreaCutoffs } from '../data/colleges';
 import { ArrowLeft, CheckCircle2, Award, Download, Building, DollarSign, Calendar, FileText, Sparkles, HelpCircle, AlertTriangle } from 'lucide-react';
+import MotionButton from './ui/MotionButton';
+import Confetti from './ui/Confetti';
+import MockAllotmentScanner from './ui/MockAllotmentScanner';
 
 interface FinalReviewProps {
   profile: StudentProfile;
@@ -17,39 +21,38 @@ export default function FinalReview({ profile, selectedOptions, onBack, onFinish
   // Core Mock Allotment Algorithm based on actual EAPCET/EAMCET reservation/cutoff bounds
   const runAllotmentLogic = () => {
     setRunningAllotment(true);
-    
-    // Simulate real seat matching processing time
-    setTimeout(() => {
-      let allottedResult: MockAllotmentResult = { allotted: false };
-      const collegesList = getCollegesForStream(profile.stream);
+  };
 
-      // Loop through choices in sequential priority order (1 to N)
-      for (let i = 0; i < selectedOptions.length; i++) {
-        const option = selectedOptions[i];
-        // Match option against our DB
-        const collegeDb = collegesList.find(c => c.id === option.collegeId);
-        
-        if (collegeDb && isCollegeAvailableToGender(collegeDb, profile.gender)) {
-          const openCutoff = profile.category === 'OC' ? null : getCollegeCutoff(collegeDb, 'OC', profile.gender, profile.region);
-          const cutoff = getEligibleCutoff(collegeDb, profile.category, profile.gender, profile.region);
+  const handleScanFinished = () => {
+    let allottedResult: MockAllotmentResult = { allotted: false };
+    const collegesList = getCollegesForStream(profile.stream);
 
-          if (cutoff !== null && profile.rank <= cutoff) {
-            allottedResult = {
-              allotted: true,
-              college: collegeDb,
-              optionNumber: option.priority,
-              categoryUsed: openCutoff !== null && profile.rank <= openCutoff ? 'OC' : profile.category,
-              allotmentType: hasLocalAreaCutoffs() ? `Historical ${profile.region} cutoff match` : 'Historical cutoff match',
-              message: `You successfully matched historical seat cutoff boundaries at priority order #${option.priority}.`
-            };
-            break; // Matched highest preference, exit loop!
-          }
+    // Loop through choices in sequential priority order (1 to N)
+    for (let i = 0; i < selectedOptions.length; i++) {
+      const option = selectedOptions[i];
+      // Match option against our DB
+      const collegeDb = collegesList.find(c => c.id === option.collegeId);
+      
+      if (collegeDb && isCollegeAvailableToGender(collegeDb, profile.gender)) {
+        const openCutoff = profile.category === 'OC' ? null : getCollegeCutoff(collegeDb, 'OC', profile.gender, profile.region);
+        const cutoff = getEligibleCutoff(collegeDb, profile.category, profile.gender, profile.region);
+
+        if (cutoff !== null && profile.rank <= cutoff) {
+          allottedResult = {
+            allotted: true,
+            college: collegeDb,
+            optionNumber: option.priority,
+            categoryUsed: openCutoff !== null && profile.rank <= openCutoff ? 'OC' : profile.category,
+            allotmentType: hasLocalAreaCutoffs() ? `Historical ${profile.region} cutoff match` : 'Historical cutoff match',
+            message: `You successfully matched historical seat cutoff boundaries at priority order #${option.priority}.`
+          };
+          break; // Matched highest preference, exit loop!
         }
       }
+    }
 
-      setAllotment(allottedResult);
-      setRunningAllotment(false);
-    }, 1500);
+    setAllotment(allottedResult);
+    setRunningAllotment(false);
   };
 
   // Printable registered list PDF simulation action
@@ -306,22 +309,25 @@ export default function FinalReview({ profile, selectedOptions, onBack, onFinish
                 <p className="text-xs text-slate-500">Historical cutoff practice only. This list is not submitted to an admissions authority.</p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <button
+                <MotionButton
+                  variant="secondary"
+                  size="sm"
                   onClick={handleDownloadSlip}
-                  className="px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                  leftIcon={<Download className="w-3.5 h-3.5" />}
                   title="Download Slip Text Document"
                 >
-                  <Download className="w-3.5 h-3.5" />
                   Download Plain TXT
-                </button>
-                <button
+                </MotionButton>
+                <MotionButton
+                  variant="primary"
+                  size="sm"
                   onClick={handleDownloadPDF}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                  leftIcon={<FileText className="w-3.5 h-3.5" />}
+                  shimmer
                   title="Download practice options list PDF"
                 >
-                  <FileText className="w-3.5 h-3.5" />
                   Download as PDF
-                </button>
+                </MotionButton>
               </div>
             </div>
 
@@ -386,59 +392,79 @@ export default function FinalReview({ profile, selectedOptions, onBack, onFinish
             </div>
           </div>
 
-          {/* Call to Allotment Option */}
-          <div className="p-6 bg-white border border-slate-200 text-slate-800 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-xs relative overflow-hidden animate-fade-in">
-            <div className="absolute right-0 top-0 transform translate-x-12 -translate-y-12 bg-emerald-500/5 h-40 w-40 rounded-full blur-2xl"></div>
-            <div className="space-y-1 max-w-xl z-10">
-              <div className="flex items-center gap-1.5 font-bold tracking-wide uppercase text-xs text-emerald-600">
-                <Sparkles className="w-4 h-4 text-emerald-500 animate-spin-slow" />
-                Step 5: Simulated Board Seat Allocation
-              </div>
-              <h4 className="font-sans font-extrabold text-xl text-slate-900">Ready to test your options?</h4>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Clicking the button will trigger the simulated admissions council seat assignment algorithm. The system evaluates options in descending sequence against reservation boundaries.
-              </p>
-            </div>
-            
-            <button
-              onClick={runAllotmentLogic}
-              disabled={runningAllotment}
-              id="run-allotment-btn"
-              className="px-6 py-3.5 bg-emerald-600 text-white hover:bg-emerald-700 font-bold rounded-xl shadow-md transition-all flex items-center gap-2 flex-shrink-0 z-10 cursor-pointer text-sm"
-            >
-              {runningAllotment ? (
-                <>
-                  <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Processing Seat...
-                </>
-              ) : (
-                <>
+          {/* Call to Allotment Option or Scanner */}
+          <AnimatePresence mode="wait">
+            {runningAllotment ? (
+              <MockAllotmentScanner
+                key="scanner"
+                examName={profile.exam?.replace('_', ' ') || 'EAPCET'}
+                categoryName={profile.category}
+                rankNumber={profile.rank}
+                onScanComplete={handleScanFinished}
+              />
+            ) : (
+              <motion.div
+                key="trigger-box"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="p-6 bg-white border border-slate-200 text-slate-800 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-xs relative overflow-hidden"
+              >
+                <div className="absolute right-0 top-0 transform translate-x-12 -translate-y-12 bg-emerald-500/5 h-40 w-40 rounded-full blur-2xl"></div>
+                <div className="space-y-1 max-w-xl z-10">
+                  <div className="flex items-center gap-1.5 font-bold tracking-wide uppercase text-xs text-emerald-600">
+                    <Sparkles className="w-4 h-4 text-emerald-500 animate-spin-slow" />
+                    Step 5: Simulated Board Seat Allocation
+                  </div>
+                  <h4 className="font-sans font-extrabold text-xl text-slate-900">Ready to test your options?</h4>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Clicking the button will trigger the simulated admissions council seat assignment algorithm. The system evaluates options in descending sequence against reservation boundaries.
+                  </p>
+                </div>
+                
+                <MotionButton
+                  variant="primary"
+                  size="lg"
+                  onClick={runAllotmentLogic}
+                  id="run-allotment-btn"
+                  shimmer
+                  className="z-10 text-sm font-bold shadow-lg shadow-emerald-600/25 shrink-0"
+                >
                   Run Mock Seat Allotment
-                </>
-              )}
-            </button>
-          </div>
+                </MotionButton>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Back Trigger */}
           <div className="flex justify-start">
-            <button
+            <MotionButton
+              variant="secondary"
+              size="sm"
               onClick={onBack}
-              className="px-5 py-2.5 border border-slate-200 hover:bg-slate-100 rounded-lg text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+              leftIcon={<ArrowLeft className="w-4 h-4" />}
             >
-              <ArrowLeft className="w-4 h-4" />
               Adjust Options Sequence
-            </button>
+            </MotionButton>
           </div>
         </div>
       ) : (
         <div className="space-y-6">
+          {/* Confetti Celebration on Allotment */}
+          {allotment.allotted && <Confetti />}
           
-          {/* MOCK ALLOTMENT ORDER LETTER BOX */}
-          <div className="bg-white border-2 border-slate-300 shadow-xl rounded-2xl overflow-hidden relative" id="allotment-letter">
-            
+          {/* MOCK ALLOTMENT ORDER LETTER BOX WITH SPRING POP-IN & GLOW */}
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.94, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 450, damping: 28 }}
+            className={`bg-white border-2 shadow-2xl rounded-2xl overflow-hidden relative ${
+              allotment.allotted 
+                ? 'border-emerald-500 ring-4 ring-emerald-500/20 shadow-emerald-500/10' 
+                : 'border-slate-300'
+            }`}
+            id="allotment-letter"
+          >
             {/* Watermark background */}
             <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none select-none">
               <Award className="w-96 h-96" />
@@ -462,7 +488,7 @@ export default function FinalReview({ profile, selectedOptions, onBack, onFinish
                 {/* Main Allotment Details Card */}
                 <div className="p-5 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl space-y-4">
                   <div className="flex items-start gap-3">
-                    <div className="p-2 bg-emerald-600 text-white rounded-lg">
+                    <div className="p-2 bg-emerald-600 text-white rounded-lg shadow-xs">
                       <Building className="w-5 h-5" />
                     </div>
                     <div className="space-y-0.5">
@@ -512,12 +538,13 @@ export default function FinalReview({ profile, selectedOptions, onBack, onFinish
                     Your rank of <strong>{profile.rank.toLocaleString()}</strong> is outside the reported cutoff values for the selected choices, or the source has no cutoff for one or more options. This does not determine eligibility for current or future counselling.
                   </p>
                   <div className="pt-2">
-                    <button
+                    <MotionButton
+                      variant="primary"
+                      size="sm"
                       onClick={() => setAllotment(null)}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-xs cursor-pointer shadow-sm"
                     >
                       Go Back & Add Safety Colleges
-                    </button>
+                    </MotionButton>
                   </div>
                 </div>
               </div>
@@ -533,23 +560,26 @@ export default function FinalReview({ profile, selectedOptions, onBack, onFinish
                 </span>
               </div>
             )}
-          </div>
+          </motion.div>
 
           {/* Action Trigger Buttons */}
           <div className="flex flex-col sm:flex-row justify-between gap-4 mt-8">
-            <button
+            <MotionButton
+              variant="secondary"
+              size="md"
               onClick={() => setAllotment(null)}
-              className="px-6 py-3 border border-slate-200 bg-white hover:bg-slate-100 rounded-xl text-slate-700 font-semibold cursor-pointer text-xs sm:text-sm text-center"
             >
               Reset Mock Allotment
-            </button>
-            <button
+            </MotionButton>
+            <MotionButton
+              variant="primary"
+              size="lg"
               onClick={onFinish}
               id="finish-simulation-btn"
-              className="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer text-xs sm:text-sm text-center"
+              shimmer
             >
               Submit & Complete Practice
-            </button>
+            </MotionButton>
           </div>
         </div>
       )}

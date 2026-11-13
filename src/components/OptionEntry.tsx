@@ -1,7 +1,10 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { College, StudentProfile, WebOption } from '../types';
 import { getCollegeCutoff, getSeatProbability, getCollegesForStream, isCollegeAvailableToGender, hasLocalAreaCutoffs, COLLEGES_DATASET_METADATA, COLLEGES_SOURCE_YEAR, PROBABILITY_CONFIG } from '../data/colleges';
-import { Search, Filter, Plus, Trash2, ArrowUp, ArrowDown, ListOrdered, GraduationCap, DollarSign, RefreshCw, AlertCircle, CheckCircle2, ArrowLeftRight, GripVertical } from 'lucide-react';
+import { Search, Filter, Plus, Trash2, ArrowUp, ArrowDown, ListOrdered, GraduationCap, DollarSign, RefreshCw, AlertCircle, CheckCircle2, ArrowLeftRight, GripVertical, Sparkles } from 'lucide-react';
+import MotionButton from './ui/MotionButton';
+import ProbabilityBadge from './ui/ProbabilityBadge';
 
 interface OptionEntryProps {
   profile: StudentProfile;
@@ -395,7 +398,20 @@ export default function OptionEntry({ profile, selectedOptions, onUpdateOptions,
                 </button>
               </div>
             ) : (
-              <>
+              <motion.div 
+                className="space-y-2.5"
+                initial="hidden"
+                animate="visible"
+                variants={{
+                  hidden: { opacity: 0 },
+                  visible: {
+                    opacity: 1,
+                    transition: {
+                      staggerChildren: 0.035
+                    }
+                  }
+                }}
+              >
                 {filteredColleges.slice(0, visibleCount).map(col => {
                   const isSelected = selectedOptions.some(opt => 
                     opt.collegeId === col.id || 
@@ -405,10 +421,15 @@ export default function OptionEntry({ profile, selectedOptions, onUpdateOptions,
                   const probMeta = PROBABILITY_CONFIG[prob] || PROBABILITY_CONFIG.NO_DATA;
 
                   return (
-                    <div 
+                    <motion.div 
                       key={col.id} 
-                      className={`p-3 rounded-lg border transition-all flex justify-between items-center ${
-                        isSelected ? 'bg-slate-50 border-slate-200 opacity-65' : 'bg-white border-slate-200 hover:border-slate-300 shadow-xs'
+                      variants={{
+                        hidden: { opacity: 0, y: 10 },
+                        visible: { opacity: 1, y: 0 }
+                      }}
+                      transition={{ duration: 0.2 }}
+                      className={`p-3 rounded-xl border transition-all flex justify-between items-center ${
+                        isSelected ? 'bg-slate-50 border-slate-200 opacity-65' : 'bg-white border-slate-200 hover:border-emerald-300 hover:shadow-xs'
                       }`}
                     >
                       <div className="space-y-1 max-w-[70%]">
@@ -419,9 +440,7 @@ export default function OptionEntry({ profile, selectedOptions, onUpdateOptions,
                           <span className="font-mono text-[10px] font-semibold text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded">
                             {col.branchName || col.branch}
                           </span>
-                          <span className={`font-mono text-[9px] font-extrabold px-1.5 py-0.5 rounded border ${probMeta.color}`} title={probMeta.description}>
-                            {probMeta.badgeLabel}
-                          </span>
+                          <ProbabilityBadge meta={probMeta} />
                         </div>
                         <h4 className="font-sans font-bold text-xs text-slate-900 line-clamp-1">{col.name}</h4>
                         <p className="text-[10px] text-slate-400 font-mono">
@@ -430,45 +449,50 @@ export default function OptionEntry({ profile, selectedOptions, onUpdateOptions,
                       </div>
 
                       <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <button
+                        <MotionButton
+                          variant={compareAId === col.id || compareBId === col.id ? "primary" : "secondary"}
+                          size="icon"
                           onClick={() => handleCompareClick(col)}
-                          className={`p-2 rounded-lg transition-all cursor-pointer border ${
+                          className={`!p-2 !min-h-[34px] !min-w-[34px] !rounded-lg ${
                             compareAId === col.id || compareBId === col.id
-                              ? 'bg-amber-100 border-amber-300 text-amber-800 font-bold'
-                              : 'bg-slate-50 border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                              ? '!bg-amber-500 hover:!bg-amber-600 !border-amber-400 !text-white'
+                              : '!text-slate-600'
                           }`}
                           title={compareAId === col.id || compareBId === col.id ? "Selected for comparison" : "Compare Side-by-Side"}
                         >
                           <ArrowLeftRight className="w-3.5 h-3.5" />
-                        </button>
+                        </MotionButton>
 
-                        <button
+                        <MotionButton
+                          variant="primary"
+                          size="icon"
                           disabled={isSelected}
                           onClick={() => addOption(col)}
-                          className={`p-2 rounded-lg transition-all cursor-pointer ${
-                            isSelected 
-                              ? 'bg-slate-100 text-slate-400' 
-                              : 'bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 shadow-xs'
+                          className={`!p-2 !min-h-[34px] !min-w-[34px] !rounded-lg ${
+                            isSelected ? '!bg-slate-100 !text-slate-400 !border-slate-200' : ''
                           }`}
                           title={isSelected ? "Already Added" : "Add to Web Options"}
+                          shimmer={!isSelected}
                         >
                           <Plus className="w-4 h-4" />
-                        </button>
+                        </MotionButton>
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })}
 
                 {filteredColleges.length > visibleCount && (
-                  <button
+                  <MotionButton
+                    variant="secondary"
+                    size="sm"
                     onClick={() => setVisibleCount(prev => prev + 100)}
-                    className="w-full py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold rounded-lg text-xs border border-emerald-200 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 mt-2"
+                    leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+                    className="w-full !py-2.5 !text-xs !font-bold !bg-emerald-50 hover:!bg-emerald-100 !text-emerald-800 !border-emerald-200 mt-2"
                   >
-                    <RefreshCw className="w-3.5 h-3.5" />
                     Load More Colleges ({filteredColleges.length - visibleCount} remaining)
-                  </button>
+                  </MotionButton>
                 )}
-              </>
+              </motion.div>
             )}
           </div>
         </div>
@@ -494,8 +518,8 @@ export default function OptionEntry({ profile, selectedOptions, onUpdateOptions,
               </div>
             </div>
 
-            {/* Scrollable list of Web Options */}
-            <div className="flex-grow overflow-y-auto mt-2 space-y-2 pr-1 py-1">
+            {/* Scrollable list of Web Options with Smooth Layout Reordering */}
+            <div className="flex-grow overflow-y-auto mt-2 space-y-2 pr-1 py-1" id="web-options-list">
               {selectedOptions.length === 0 ? (
                 <div className="text-center py-20 text-slate-400 space-y-3">
                   <ListOrdered className="w-12 h-12 mx-auto text-slate-200" />
@@ -505,122 +529,138 @@ export default function OptionEntry({ profile, selectedOptions, onUpdateOptions,
                   </p>
                 </div>
               ) : (
-                selectedOptions.map((opt, index) => {
-                  const isBeingDragged = index === draggedIndex;
-                  return (
-                    <div 
-                      key={opt.id}
-                      draggable="true"
-                      onDragStart={(e) => handleDragStart(e, index)}
-                      onDragOver={handleDragOver}
-                      onDrop={(e) => handleDrop(e, index)}
-                      onDragEnd={() => setDraggedIndex(null)}
-                      className={`p-2.5 sm:p-3 bg-white border rounded-xl shadow-2xs hover:border-emerald-300 transition-all flex items-center justify-between gap-2.5 relative ${
-                        isBeingDragged ? 'opacity-40 border-dashed border-emerald-500 bg-slate-50' : 'border-slate-200'
-                      }`}
-                    >
-                      {/* Drag Handle & Priority Number */}
-                      <div className="flex items-center gap-1.5 shrink-0 select-none">
-                        <div 
-                          className="p-1 text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing hidden sm:flex items-center justify-center h-10 w-6"
-                          title="Drag to reorder"
-                        >
-                          <GripVertical className="w-4 h-4 shrink-0" />
-                        </div>
-                        <div className="bg-emerald-600 text-white font-mono font-black text-xs h-8 w-8 rounded-lg flex items-center justify-center shadow-xs">
-                          {opt.priority}
-                        </div>
-                      </div>
-
-                      {/* College Branch Title details */}
-                      <div className="flex-grow space-y-0.5 min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-sans font-extrabold text-xs text-slate-900">{opt.collegeCode}</span>
-                          <span className="font-mono text-[9px] sm:text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 border border-emerald-100 rounded">
-                            {opt.branch}
-                          </span>
-                          <span className="text-[9px] sm:text-[10px] text-slate-400 font-mono truncate max-w-[80px]">{opt.district}</span>
-                        </div>
-                        <h4 className="text-[11px] sm:text-xs text-slate-500 font-medium line-clamp-1">{opt.collegeName}</h4>
-                      </div>
-
-                      {/* Manual index target input & re-ordering buttons */}
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        
-                        {/* Priority shift field (compact on mobile) */}
-                        <div className="hidden sm:flex flex-col items-end gap-1">
-                          <div className="flex items-center gap-1">
-                            <input
-                              type="number"
-                              placeholder="Set"
-                              value={manualIndexState[opt.id] || ''}
-                              onChange={(e) => {
-                                setManualIndexState({ ...manualIndexState, [opt.id]: e.target.value });
-                                if (priorityErrorState[opt.id]) {
-                                  setPriorityErrorState(prev => {
-                                    const copy = { ...prev };
-                                    delete copy[opt.id];
-                                    return copy;
-                                  });
-                                }
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  handleMoveToPriority(opt.id, index);
-                                }
-                              }}
-                              className="w-10 text-center text-xs border border-slate-300 rounded p-1 font-mono focus:outline-none focus:ring-1 focus:ring-emerald-600"
-                              title="Enter new position and hit Enter or click Go"
-                            />
-                            <button
-                              onClick={() => handleMoveToPriority(opt.id, index)}
-                              className="bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold px-1.5 py-1 rounded transition-all cursor-pointer"
-                            >
-                              Go
-                            </button>
+                <AnimatePresence initial={false}>
+                  {selectedOptions.map((opt, index) => {
+                    const isBeingDragged = index === draggedIndex;
+                    return (
+                      <motion.div 
+                        key={opt.id}
+                        layout
+                        initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.92, transition: { duration: 0.15 } }}
+                        transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+                        draggable="true"
+                        onDragStart={(e: any) => handleDragStart(e, index)}
+                        onDragOver={handleDragOver}
+                        onDrop={(e: any) => handleDrop(e, index)}
+                        onDragEnd={() => setDraggedIndex(null)}
+                        className={`p-2.5 sm:p-3 bg-white border rounded-xl shadow-2xs hover:border-emerald-300 transition-colors flex items-center justify-between gap-2.5 relative ${
+                          isBeingDragged ? 'opacity-40 border-dashed border-emerald-500 bg-slate-50' : 'border-slate-200'
+                        }`}
+                      >
+                        {/* Drag Handle & Priority Number */}
+                        <div className="flex items-center gap-1.5 shrink-0 select-none">
+                          <div 
+                            className="p-1 text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing hidden sm:flex items-center justify-center h-10 w-6"
+                            title="Drag to reorder"
+                          >
+                            <GripVertical className="w-4 h-4 shrink-0" />
                           </div>
-                          {priorityErrorState[opt.id] && (
-                            <span className="text-[9px] text-red-500 font-medium whitespace-nowrap">
-                              {priorityErrorState[opt.id]}
+                          <div className="bg-emerald-600 text-white font-mono font-black text-xs h-8 w-8 rounded-lg flex items-center justify-center shadow-xs">
+                            {opt.priority}
+                          </div>
+                        </div>
+
+                        {/* College Branch Title details */}
+                        <div className="flex-grow space-y-0.5 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-sans font-extrabold text-xs text-slate-900">{opt.collegeCode}</span>
+                            <span className="font-mono text-[9px] sm:text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 border border-emerald-100 rounded">
+                              {opt.branch}
                             </span>
-                          )}
+                            <span className="text-[9px] sm:text-[10px] text-slate-400 font-mono truncate max-w-[80px]">{opt.district}</span>
+                          </div>
+                          <h4 className="text-[11px] sm:text-xs text-slate-500 font-medium line-clamp-1">{opt.collegeName}</h4>
                         </div>
 
-                        {/* Arrows with Large Mobile Touch Targets (at least 40px/44px for high accuracy) */}
-                        <div className="flex items-center gap-1">
-                          <button
-                            disabled={index === 0}
-                            onClick={() => moveUp(index)}
-                            className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center border border-slate-200 bg-slate-50 hover:bg-emerald-50 text-slate-500 hover:text-emerald-700 rounded-lg disabled:opacity-20 transition-all cursor-pointer active:scale-95"
-                            title="Move Option Up"
-                            aria-label="Move Up"
-                          >
-                            <ArrowUp className="w-4 h-4" />
-                          </button>
-                          <button
-                            disabled={index === selectedOptions.length - 1}
-                            onClick={() => moveDown(index)}
-                            className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center border border-slate-200 bg-slate-50 hover:bg-emerald-50 text-slate-500 hover:text-emerald-700 rounded-lg disabled:opacity-20 transition-all cursor-pointer active:scale-95"
-                            title="Move Option Down"
-                            aria-label="Move Down"
-                          >
-                            <ArrowDown className="w-4 h-4" />
-                          </button>
-                        </div>
+                        {/* Manual index target input & re-ordering buttons */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          
+                          {/* Priority shift field (compact on mobile) */}
+                          <div className="hidden sm:flex flex-col items-end gap-1">
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                placeholder="Set"
+                                value={manualIndexState[opt.id] || ''}
+                                onChange={(e) => {
+                                  setManualIndexState({ ...manualIndexState, [opt.id]: e.target.value });
+                                  if (priorityErrorState[opt.id]) {
+                                    setPriorityErrorState(prev => {
+                                      const copy = { ...prev };
+                                      delete copy[opt.id];
+                                      return copy;
+                                    });
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    handleMoveToPriority(opt.id, index);
+                                  }
+                                }}
+                                className="w-10 text-center text-xs border border-slate-300 rounded p-1 font-mono focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                                title="Enter new position and hit Enter or click Go"
+                              />
+                              <MotionButton
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => handleMoveToPriority(opt.id, index)}
+                                className="!px-2 !py-0.5 !min-h-[26px] !text-[10px] !rounded"
+                              >
+                                Go
+                              </MotionButton>
+                            </div>
+                            {priorityErrorState[opt.id] && (
+                              <span className="text-[9px] text-red-500 font-medium whitespace-nowrap">
+                                {priorityErrorState[opt.id]}
+                              </span>
+                            )}
+                          </div>
 
-                        {/* Delete trash button with safe touch padding */}
-                        <button
-                          onClick={() => removeOption(opt.id)}
-                          className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100 rounded-lg transition-all cursor-pointer"
-                          title="Remove Choice"
-                          aria-label="Delete option"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })
+                          {/* Arrows with Large Mobile Touch Targets */}
+                          <div className="flex items-center gap-1">
+                            <MotionButton
+                              variant="secondary"
+                              size="icon"
+                              disabled={index === 0}
+                              onClick={() => moveUp(index)}
+                              className="!w-9 !h-9 sm:!w-10 sm:!h-10 !min-h-[36px] !min-w-[36px] !p-0 !rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50"
+                              title="Move Option Up"
+                              aria-label="Move Up"
+                            >
+                              <ArrowUp className="w-4 h-4" />
+                            </MotionButton>
+
+                            <MotionButton
+                              variant="secondary"
+                              size="icon"
+                              disabled={index === selectedOptions.length - 1}
+                              onClick={() => moveDown(index)}
+                              className="!w-9 !h-9 sm:!w-10 sm:!h-10 !min-h-[36px] !min-w-[36px] !p-0 !rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50"
+                              title="Move Option Down"
+                              aria-label="Move Down"
+                            >
+                              <ArrowDown className="w-4 h-4" />
+                            </MotionButton>
+                          </div>
+
+                          {/* Delete trash button */}
+                          <MotionButton
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeOption(opt.id)}
+                            className="!w-9 !h-9 sm:!w-10 sm:!h-10 !min-h-[36px] !min-w-[36px] !p-0 !rounded-lg text-slate-400 hover:!text-red-600 hover:!bg-red-50"
+                            title="Remove Choice"
+                            aria-label="Delete option"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </MotionButton>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
               )}
             </div>
           </div>
@@ -825,23 +865,25 @@ export default function OptionEntry({ profile, selectedOptions, onUpdateOptions,
 
       {/* Button Navigation Panel */}
       <div className="mt-8 flex justify-between items-center border-t border-slate-200 pt-6">
-        <button
+        <MotionButton
+          variant="secondary"
+          size="md"
           onClick={onBack}
-          className="px-6 py-2.5 border border-slate-200 hover:bg-slate-100 rounded-lg transition-all font-medium flex items-center gap-2 cursor-pointer"
         >
           Back
-        </button>
-        <button
+        </MotionButton>
+
+        <MotionButton
+          variant="primary"
+          size="lg"
           onClick={onNext}
           disabled={selectedOptions.length === 0 || collegesList.length === 0}
           id="submit-options-btn"
-          className={`px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-md transition-all flex items-center gap-2 cursor-pointer ${
-            selectedOptions.length === 0 || collegesList.length === 0 ? 'opacity-50 cursor-not-allowed bg-slate-300 shadow-none hover:bg-slate-300' : ''
-          }`}
+          shimmer
+          rightIcon={<ArrowUp className="w-4 h-4 rotate-90" />}
         >
           Proceed to Final Review
-          <ArrowUp className="w-4 h-4 rotate-90" />
-        </button>
+        </MotionButton>
       </div>
     </div>
   );

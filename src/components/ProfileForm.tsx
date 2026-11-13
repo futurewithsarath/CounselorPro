@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { StudentProfile, ExamType } from '../types';
 import { hasLocalAreaCutoffs } from '../data/colleges';
 import { ArrowLeft, ArrowRight, UserCircle, Trophy, HelpCircle } from 'lucide-react';
+import MotionButton from './ui/MotionButton';
 
 interface ProfileFormProps {
   exam: ExamType;
@@ -305,21 +306,24 @@ export default function ProfileForm({ exam, profile, onChange, onNext, onBack }:
 
       {/* Navigation Buttons */}
       <div className="mt-8 flex justify-between items-center border-t border-slate-200 pt-6">
-        <button
+        <MotionButton
+          variant="secondary"
+          size="md"
           onClick={onBack}
-          className="px-6 py-2.5 border border-slate-200 hover:bg-slate-100 rounded-lg transition-all font-medium flex items-center gap-2 cursor-pointer"
+          leftIcon={<ArrowLeft className="w-4 h-4" />}
         >
-          <ArrowLeft className="w-4 h-4" />
           Back
-        </button>
-        <button
+        </MotionButton>
+        <MotionButton
+          variant="primary"
+          size="lg"
           onClick={handleNextClick}
           id="profile-next-btn"
-          className="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-md transition-all flex items-center gap-2 cursor-pointer"
+          shimmer
+          rightIcon={<ArrowRight className="w-4 h-4" />}
         >
           Proceed to College Selection
-          <ArrowRight className="w-4 h-4" />
-        </button>
+        </MotionButton>
       </div>
     </div>
   );

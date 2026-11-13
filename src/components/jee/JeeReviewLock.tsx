@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { JeeStudentProfile, JeePracticeChoice, JeePracticeLock } from '../../types';
 import { 
   Lock, 
@@ -15,6 +16,8 @@ import {
   Sparkles,
   Info
 } from 'lucide-react';
+import MotionButton from '../ui/MotionButton';
+import Confetti from '../ui/Confetti';
 
 interface JeeReviewLockProps {
   profile: JeeStudentProfile;
@@ -470,42 +473,50 @@ export default function JeeReviewLock({
         </div>
       )}
 
+      {/* Confetti Celebration on Practice Lock */}
+      {lockedSession && <Confetti />}
+
       {/* Action Navigation Footer */}
       <div className="flex justify-between items-center border-t border-slate-200 pt-5">
-        <button
-          type="button"
+        <MotionButton
+          variant="secondary"
+          size="md"
           onClick={onBack}
-          className="px-6 py-2.5 border border-slate-200 hover:bg-slate-100 rounded-lg transition-all font-medium flex items-center gap-2 cursor-pointer text-sm"
+          leftIcon={<ArrowLeft className="w-4 h-4" />}
         >
-          <ArrowLeft className="w-4 h-4" />
           Back to Choice Filling
-        </button>
+        </MotionButton>
         <div className="flex items-center gap-2">
           {onOpenLearningCentre && (
-            <button
+            <MotionButton
+              variant="secondary"
+              size="sm"
               onClick={onOpenLearningCentre}
-              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 cursor-pointer"
+              leftIcon={<HelpCircle className="w-4 h-4 text-indigo-600" />}
             >
-              <HelpCircle className="w-4 h-4 text-indigo-600" />
-              <span>Learn Post-Allotment (Freeze/Float/Slide)</span>
-            </button>
+              Learn Freeze/Float/Slide
+            </MotionButton>
           )}
           {lockedSession ? (
-            <button
+            <MotionButton
+              variant="primary"
+              size="md"
               onClick={handleDownloadPdf}
-              className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+              shimmer
+              leftIcon={<Download className="w-4 h-4" />}
             >
-              <Download className="w-4 h-4" />
-              <span>Download Locked Preference Slip</span>
-            </button>
+              Download Locked Slip
+            </MotionButton>
           ) : (
-            <button
+            <MotionButton
+              variant="indigo"
+              size="md"
               onClick={() => setShowConfirmModal(true)}
-              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+              shimmer
+              leftIcon={<Lock className="w-4 h-4" />}
             >
-              <Lock className="w-4 h-4" />
-              <span>Lock Practice Choices</span>
-            </button>
+              Lock Practice Choices
+            </MotionButton>
           )}
         </div>
       </div>

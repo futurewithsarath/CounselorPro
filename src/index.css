@@ -27,6 +27,19 @@ button {
   touch-action: manipulation;
 }
 
+@keyframes shimmer-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+.animate-shimmer {
+  animation: shimmer-sweep 2.2s infinite;
+}
+
+.group:hover .group-hover\:animate-shimmer {
+  animation: shimmer-sweep 1.6s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

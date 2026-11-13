@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Compass, GraduationCap, ShieldAlert, Sparkles, CheckCircle2, ArrowRight, Database } from 'lucide-react';
+import MotionButton from './ui/MotionButton';
 
 interface LandingPageProps {
   onStart: () => void;
@@ -69,17 +70,20 @@ export default function LandingPage({ onStart }: LandingPageProps) {
             transition={{ duration: 0.5, delay: 0.3 }}
             className="pt-4 flex flex-col sm:flex-row gap-3"
           >
-            <button
+            <MotionButton
               onClick={onStart}
               id="start-simulation-btn"
-              className="px-8 py-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2 group text-base cursor-pointer"
+              variant="primary"
+              size="lg"
+              shimmer
+              rightIcon={<ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />}
+              className="text-base font-bold shadow-lg shadow-emerald-600/25"
             >
               Start Counselling Simulation
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
+            </MotionButton>
             <a 
               href="#features-section" 
-              className="px-6 py-4 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-xl border border-slate-200 transition-all text-center flex items-center justify-center"
+              className="px-6 py-3.5 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-xl border border-slate-200 transition-all text-center flex items-center justify-center text-sm hover:border-slate-300 shadow-xs active:scale-95"
             >
               Learn How It Works
             </a>
@@ -97,12 +101,12 @@ export default function LandingPage({ onStart }: LandingPageProps) {
               <p className="text-xs text-slate-500 font-mono tracking-wider uppercase mt-1">Realistic Portal</p>
             </div>
             <div>
-              <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-sans">40+</p>
-              <p className="text-xs text-slate-500 font-mono tracking-wider uppercase mt-1">Top Engineering Colleges</p>
+              <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-sans">2,818</p>
+              <p className="text-xs text-slate-500 font-mono tracking-wider uppercase mt-1">Verified Cutoffs</p>
             </div>
             <div>
-              <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-sans">AI</p>
-              <p className="text-xs text-slate-500 font-mono tracking-wider uppercase mt-1">Counselor Feedback</p>
+              <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-sans">31 NITs</p>
+              <p className="text-xs text-slate-500 font-mono tracking-wider uppercase mt-1">JoSAA Simulation</p>
             </div>
           </motion.div>
         </div>

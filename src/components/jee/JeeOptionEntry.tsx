@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { JeeStudentProfile, JeePracticeChoice, NitAcademicProgram } from '../../types';
 import { ALL_NITS, ALL_NIT_PROGRAMS, determineNitQuota, INDIAN_STATES_UTS } from '../../data/jeeNitCatalog';
 import { 
@@ -21,6 +22,7 @@ import {
   HelpCircle,
   BookOpen
 } from 'lucide-react';
+import MotionButton from '../ui/MotionButton';
 
 interface JeeOptionEntryProps {
   profile: JeeStudentProfile;
@@ -397,62 +399,79 @@ export default function JeeOptionEntry({
                 </button>
               </div>
             ) : (
-              filteredPrograms.map(prog => {
-                const isSelected = selectedChoices.some(c => c.programId === prog.id);
-                const quota = determineNitQuota(profile.stateOfEligibility, prog.instituteState);
-                const isHomeState = quota === 'Home State (HS)';
+              <motion.div
+                className="space-y-2"
+                initial="hidden"
+                animate="visible"
+                variants={{
+                  hidden: { opacity: 0 },
+                  visible: {
+                    opacity: 1,
+                    transition: { staggerChildren: 0.03 }
+                  }
+                }}
+              >
+                {filteredPrograms.map(prog => {
+                  const isSelected = selectedChoices.some(c => c.programId === prog.id);
+                  const quota = determineNitQuota(profile.stateOfEligibility, prog.instituteState);
+                  const isHomeState = quota === 'Home State (HS)';
 
-                return (
-                  <div
-                    key={prog.id}
-                    className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                      isSelected
-                        ? 'bg-slate-50 border-slate-200 opacity-60'
-                        : 'bg-white border-slate-200 hover:border-indigo-300 shadow-2xs hover:shadow-xs'
-                    }`}
-                  >
-                    <div className="space-y-1 min-w-0 flex-grow">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-mono text-[10px] font-bold text-indigo-800 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded">
-                          [{prog.instituteCode}] {prog.instituteShortName}
-                        </span>
-                        <span className="font-mono text-[10px] font-semibold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
-                          {prog.programCode}
-                        </span>
-                        <span
-                          className={`font-mono text-[9px] font-bold px-1.5 py-0.5 rounded border ${
-                            isHomeState
-                              ? 'text-purple-700 bg-purple-50 border-purple-200'
-                              : 'text-slate-600 bg-slate-100 border-slate-200'
-                          }`}
-                        >
-                          {quota}
-                        </span>
-                      </div>
-                      <h4 className="font-sans font-bold text-xs text-slate-900 truncate">
-                        {prog.programName}
-                      </h4>
-                      <p className="text-[10px] text-slate-400 font-mono">
-                        {prog.instituteState} • {prog.degree}
-                      </p>
-                    </div>
-
-                    <button
-                      type="button"
-                      disabled={isSelected}
-                      onClick={() => addChoice(prog)}
-                      className={`p-2 rounded-lg transition-all shrink-0 cursor-pointer ${
+                  return (
+                    <motion.div
+                      key={prog.id}
+                      variants={{
+                        hidden: { opacity: 0, y: 8 },
+                        visible: { opacity: 1, y: 0 }
+                      }}
+                      transition={{ duration: 0.18 }}
+                      className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${
                         isSelected
-                          ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                          : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs active:bg-indigo-800'
+                          ? 'bg-slate-50 border-slate-200 opacity-60'
+                          : 'bg-white border-slate-200 hover:border-indigo-300 shadow-2xs hover:shadow-xs'
                       }`}
-                      title={isSelected ? 'Already in your choices' : 'Add to choice preferences'}
                     >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
-                );
-              })
+                      <div className="space-y-1 min-w-0 flex-grow">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono text-[10px] font-bold text-indigo-800 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded">
+                            [{prog.instituteCode}] {prog.instituteShortName}
+                          </span>
+                          <span className="font-mono text-[10px] font-semibold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
+                            {prog.programCode}
+                          </span>
+                          <span
+                            className={`font-mono text-[9px] font-bold px-1.5 py-0.5 rounded border ${
+                              isHomeState
+                                ? 'text-purple-700 bg-purple-50 border-purple-200'
+                                : 'text-slate-600 bg-slate-100 border-slate-200'
+                            }`}
+                          >
+                            {quota}
+                          </span>
+                        </div>
+                        <h4 className="font-sans font-bold text-xs text-slate-900 truncate">
+                          {prog.programName}
+                        </h4>
+                        <p className="text-[10px] text-slate-400 font-mono">
+                          {prog.instituteState} • {prog.degree}
+                        </p>
+                      </div>
+
+                      <MotionButton
+                        variant={isSelected ? "secondary" : "indigo"}
+                        size="icon"
+                        disabled={isSelected}
+                        onClick={() => addChoice(prog)}
+                        className={`!p-2 !min-h-[34px] !min-w-[34px] !rounded-lg ${
+                          isSelected ? '!bg-slate-100 !text-slate-400' : ''
+                        }`}
+                        title={isSelected ? 'Already in your choices' : 'Add to choice preferences'}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </MotionButton>
+                    </motion.div>
+                  );
+                })}
+              </motion.div>
             )}
           </div>
         </div>
@@ -489,7 +508,7 @@ export default function JeeOptionEntry({
             </div>
           </div>
 
-          {/* Selected Choices Scrollable List */}
+          {/* Selected Choices Scrollable List with Smooth Layout Reordering */}
           <div className="flex-grow overflow-y-auto space-y-2 pr-1">
             {selectedChoices.length === 0 ? (
               <div className="text-center py-20 text-slate-400 space-y-3">
@@ -505,102 +524,104 @@ export default function JeeOptionEntry({
                 </div>
               </div>
             ) : (
-              selectedChoices.map((choice, index) => {
-                const isBeingDragged = index === draggedIndex;
-                const isHomeState = choice.quotaApplied === 'Home State (HS)';
+              <AnimatePresence initial={false}>
+                {selectedChoices.map((choice, index) => {
+                  const isBeingDragged = index === draggedIndex;
+                  const isHomeState = choice.quotaApplied === 'Home State (HS)';
 
-                return (
-                  <div
-                    key={choice.id}
-                    draggable="true"
-                    onDragStart={(e) => handleDragStart(e, index)}
-                    onDragOver={handleDragOver}
-                    onDrop={(e) => handleDrop(e, index)}
-                    onDragEnd={() => setDraggedIndex(null)}
-                    className={`p-2.5 sm:p-3 bg-white border rounded-xl shadow-2xs hover:border-indigo-300 transition-all flex items-center justify-between gap-2.5 relative ${
-                      isBeingDragged ? 'opacity-40 border-dashed border-indigo-500 bg-slate-50' : 'border-slate-200'
-                    }`}
-                  >
-                    {/* Drag Handle & Priority Number */}
-                    <div className="flex items-center gap-1.5 shrink-0 select-none">
-                      <div
-                        className="p-1 text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing hidden sm:flex items-center justify-center h-8 w-5"
-                        title="Drag to reorder preference"
-                      >
-                        <GripVertical className="w-4 h-4 shrink-0" />
-                      </div>
-                      <div className="bg-indigo-600 text-white font-mono font-bold text-xs h-7 w-7 rounded-lg flex items-center justify-center shadow-xs">
-                        {choice.priority}
-                      </div>
-                    </div>
-
-                    {/* Choice Details */}
-                    <div className="flex-grow space-y-0.5 min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-sans font-bold text-xs text-slate-900 truncate">
-                          [{choice.instituteCode}] {choice.instituteShortName}
-                        </span>
-                        <span className="font-mono text-[9px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.2 border border-indigo-100 rounded">
-                          {choice.programCode}
-                        </span>
-                        <span
-                          className={`font-mono text-[9px] font-semibold px-1.5 py-0.2 rounded border ${
-                            isHomeState
-                              ? 'text-purple-700 bg-purple-50 border-purple-200'
-                              : 'text-slate-600 bg-slate-100 border-slate-200'
-                          }`}
+                  return (
+                    <motion.div
+                      key={choice.id}
+                      layout
+                      initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.92, transition: { duration: 0.15 } }}
+                      transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+                      draggable="true"
+                      onDragStart={(e: any) => handleDragStart(e, index)}
+                      onDragOver={handleDragOver}
+                      onDrop={(e: any) => handleDrop(e, index)}
+                      onDragEnd={() => setDraggedIndex(null)}
+                      className={`p-2.5 sm:p-3 bg-white border rounded-xl shadow-2xs hover:border-indigo-300 transition-colors flex items-center justify-between gap-2.5 relative ${
+                        isBeingDragged ? 'opacity-40 border-dashed border-indigo-500 bg-slate-50' : 'border-slate-200'
+                      }`}
+                    >
+                      {/* Drag Handle & Priority Number */}
+                      <div className="flex items-center gap-1.5 shrink-0 select-none">
+                        <div
+                          className="p-1 text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing hidden sm:flex items-center justify-center h-8 w-5"
+                          title="Drag to reorder preference"
                         >
-                          {choice.quotaApplied}
-                        </span>
+                          <GripVertical className="w-4 h-4 shrink-0" />
+                        </div>
+                        <div className="bg-indigo-600 text-white font-mono font-bold text-xs h-7 w-7 rounded-lg flex items-center justify-center shadow-xs">
+                          {choice.priority}
+                        </div>
                       </div>
-                      <p className="text-[11px] text-slate-700 truncate font-medium">
-                        {choice.programName}
-                      </p>
-                      <p className="text-[9px] text-slate-400 font-mono">
-                        {choice.instituteState} • {choice.degree}
-                      </p>
-                    </div>
 
-                    {/* Reorder Buttons & Remove */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => moveUp(index)}
-                        disabled={index === 0}
-                        className={`p-1 rounded border transition-all ${
-                          index === 0
-                            ? 'text-slate-300 border-slate-200 cursor-not-allowed'
-                            : 'text-slate-600 border-slate-300 hover:bg-slate-100 hover:text-slate-900 cursor-pointer'
-                        }`}
-                        title="Move choice up"
-                      >
-                        <ArrowUp className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => moveDown(index)}
-                        disabled={index === selectedChoices.length - 1}
-                        className={`p-1 rounded border transition-all ${
-                          index === selectedChoices.length - 1
-                            ? 'text-slate-300 border-slate-200 cursor-not-allowed'
-                            : 'text-slate-600 border-slate-300 hover:bg-slate-100 hover:text-slate-900 cursor-pointer'
-                        }`}
-                        title="Move choice down"
-                      >
-                        <ArrowDown className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removeChoice(choice.id)}
-                        className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 transition-all cursor-pointer"
-                        title="Remove choice"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
+                      {/* Choice Details */}
+                      <div className="flex-grow space-y-0.5 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-sans font-bold text-xs text-slate-900 truncate">
+                            [{choice.instituteCode}] {choice.instituteShortName}
+                          </span>
+                          <span className="font-mono text-[9px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.2 border border-indigo-100 rounded">
+                            {choice.programCode}
+                          </span>
+                          <span
+                            className={`font-mono text-[9px] font-semibold px-1.5 py-0.2 rounded border ${
+                              isHomeState
+                                ? 'text-purple-700 bg-purple-50 border-purple-200'
+                                : 'text-slate-600 bg-slate-100 border-slate-200'
+                            }`}
+                          >
+                            {choice.quotaApplied}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-700 truncate font-medium">
+                          {choice.programName}
+                        </p>
+                        <p className="text-[9px] text-slate-400 font-mono">
+                          {choice.instituteState} • {choice.degree}
+                        </p>
+                      </div>
+
+                      {/* Reorder Buttons & Remove */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <MotionButton
+                          variant="secondary"
+                          size="icon"
+                          disabled={index === 0}
+                          onClick={() => moveUp(index)}
+                          className="!p-1.5 !min-h-[30px] !min-w-[30px] !rounded text-slate-600 hover:text-indigo-700 hover:bg-indigo-50"
+                          title="Move choice up"
+                        >
+                          <ArrowUp className="w-3.5 h-3.5" />
+                        </MotionButton>
+                        <MotionButton
+                          variant="secondary"
+                          size="icon"
+                          disabled={index === selectedChoices.length - 1}
+                          onClick={() => moveDown(index)}
+                          className="!p-1.5 !min-h-[30px] !min-w-[30px] !rounded text-slate-600 hover:text-indigo-700 hover:bg-indigo-50"
+                          title="Move choice down"
+                        >
+                          <ArrowDown className="w-3.5 h-3.5" />
+                        </MotionButton>
+                        <MotionButton
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeChoice(choice.id)}
+                          className="!p-1.5 !min-h-[30px] !min-w-[30px] !rounded text-rose-500 hover:!text-rose-700 hover:!bg-rose-50"
+                          title="Remove choice"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </MotionButton>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
             )}
           </div>
 
@@ -660,27 +681,24 @@ export default function JeeOptionEntry({
 
       {/* Navigation Footer */}
       <div className="mt-6 flex justify-between items-center border-t border-slate-200 pt-4">
-        <button
-          type="button"
+        <MotionButton
+          variant="secondary"
+          size="md"
           onClick={onBack}
-          className="px-6 py-2.5 border border-slate-200 hover:bg-slate-100 rounded-lg transition-all font-medium flex items-center gap-2 cursor-pointer text-sm"
+          leftIcon={<ArrowLeft className="w-4 h-4" />}
         >
-          <ArrowLeft className="w-4 h-4" />
           Back to Eligibility Details
-        </button>
-        <button
-          type="button"
+        </MotionButton>
+        <MotionButton
+          variant="indigo"
+          size="lg"
           onClick={onNext}
           disabled={selectedChoices.length === 0}
-          className={`px-8 py-3 font-semibold rounded-lg shadow-md transition-all flex items-center gap-2 text-sm ${
-            selectedChoices.length > 0
-              ? 'bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer'
-              : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-          }`}
+          shimmer
+          rightIcon={<ArrowRight className="w-4 h-4" />}
         >
           Review & Practice Lock Choices
-          <ArrowRight className="w-4 h-4" />
-        </button>
+        </MotionButton>
       </div>
     </div>
   );

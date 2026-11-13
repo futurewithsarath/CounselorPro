@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { JeeStudentProfile, JeePracticeMode, JeeCategory } from '../../types';
 import { INDIAN_STATES_UTS, ALL_NITS, determineNitQuota } from '../../data/jeeNitCatalog';
 import { ArrowLeft, ArrowRight, UserCircle, Trophy, HelpCircle, Sparkles, Building2, ShieldAlert } from 'lucide-react';
+import MotionButton from '../ui/MotionButton';
 
 interface JeeProfileFormProps {
   profile: JeeStudentProfile;
@@ -312,23 +313,24 @@ export default function JeeProfileForm({
 
       {/* Navigation Buttons */}
       <div className="mt-8 flex justify-between items-center border-t border-slate-200 pt-6">
-        <button
-          type="button"
+        <MotionButton
+          variant="secondary"
+          size="md"
           onClick={onBack}
-          className="px-6 py-2.5 border border-slate-200 hover:bg-slate-100 rounded-lg transition-all font-medium flex items-center gap-2 cursor-pointer text-sm"
+          leftIcon={<ArrowLeft className="w-4 h-4" />}
         >
-          <ArrowLeft className="w-4 h-4" />
           Back to Exam Selection
-        </button>
-        <button
-          type="button"
+        </MotionButton>
+        <MotionButton
+          variant="indigo"
+          size="lg"
           onClick={handleNextClick}
           id="jee-proceed-btn"
-          className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg shadow-md transition-all flex items-center gap-2 cursor-pointer text-sm"
+          shimmer
+          rightIcon={<ArrowRight className="w-4 h-4" />}
         >
           Enter Choice-Filling Workspace
-          <ArrowRight className="w-4 h-4" />
-        </button>
+        </MotionButton>
       </div>
     </div>
   );

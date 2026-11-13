@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { StudentProfile, WebOption, MockAllotmentResult, College } from '../types';
 import { COLLEGES_DB, COLLEGES_DATASET_METADATA, COLLEGES_SOURCE_YEAR, getCollegeCutoff, getEligibleCutoff, getSeatProbability, isCollegeAvailableToGender, hasLocalAreaCutoffs } from '../data/colleges';
+import MotionButton from './ui/MotionButton';
+import Confetti from './ui/Confetti';
 
 interface SuccessScreenProps {
   profile: StudentProfile;
@@ -278,6 +280,7 @@ export default function SuccessScreen({ profile, selectedOptions, optionsLength,
 
   return (
     <div className="max-w-3xl mx-auto py-10 px-4" id="success-screen">
+      <Confetti />
       
       {/* Top celebratory state */}
       <div className="text-center mb-8">
@@ -580,38 +583,48 @@ export default function SuccessScreen({ profile, selectedOptions, optionsLength,
       </div>
 
       {/* Action triggers */}
-      <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
-        <button
+      <div className="flex flex-col sm:flex-row justify-center items-center gap-3">
+        <MotionButton
+          variant="primary"
+          size="md"
           onClick={handleDownloadOptionsPdf}
-          className="w-full sm:w-auto px-6 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+          leftIcon={<Download className="w-4 h-4" />}
+          shimmer
+          className="w-full sm:w-auto"
         >
-          <Download className="w-4 h-4" />
           Download Practice List PDF
-        </button>
-        <button
+        </MotionButton>
+        <MotionButton
+          variant="secondary"
+          size="md"
           onClick={handleDownloadRegisteredSummary}
-          className="w-full sm:w-auto px-6 py-3.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-800 font-semibold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer shadow-3xs transition-colors"
+          leftIcon={<Download className="w-4 h-4 text-slate-500" />}
+          className="w-full sm:w-auto"
         >
-          <Download className="w-4 h-4 text-slate-500" />
-          Download Practice Summary
-        </button>
+          Download Summary
+        </MotionButton>
 
         {/* Share Result Snippet Trigger */}
-        <button
+        <MotionButton
+          variant="secondary"
+          size="md"
           onClick={handleShareSimulationResult}
-          className="w-full sm:w-auto px-6 py-3.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-750 font-semibold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer transition-colors"
+          leftIcon={copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Share2 className="w-4 h-4 text-slate-500" />}
+          className="w-full sm:w-auto"
         >
-          {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Share2 className="w-4 h-4 text-slate-500" />}
-          {copied ? 'Copied to Clipboard!' : 'Share Result'}
-        </button>
+          {copied ? 'Copied!' : 'Share Result'}
+        </MotionButton>
 
-        <button
+        <MotionButton
+          variant="primary"
+          size="md"
           onClick={onReset}
-          className="w-full sm:w-auto px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-100"
+          leftIcon={<RefreshCw className="w-4 h-4" />}
+          shimmer
+          className="w-full sm:w-auto font-bold"
         >
-          <RefreshCw className="w-4 h-4" />
-          Practice Simulation Again
-        </button>
+          Practice Again
+        </MotionButton>
       </div>
 
       {/* Share feedback reminder */}
