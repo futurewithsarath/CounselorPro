@@ -115,3 +115,4 @@ export default function Confetti({ durationMs = 2800, particleCount = 75 }: Conf
     />
   );
 }
+
