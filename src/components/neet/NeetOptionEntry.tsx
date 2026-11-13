@@ -22,7 +22,9 @@ import {
   Layers,
   Award,
   CheckCircle2,
-  Stethoscope
+  Stethoscope,
+  Download,
+  RefreshCw
 } from 'lucide-react';
 import { 
   NeetStudentProfile, 
@@ -40,6 +42,7 @@ import {
   normalizeIndianState,
   CANONICAL_INDIAN_STATES 
 } from '../../data/neetCatalog';
+import { generateNeetPreferencePdf } from '../../utils/neetPdfExport';
 import { PROBABILITY_CONFIG } from '../../data/colleges';
 import MotionButton from '../ui/MotionButton';
 import ProbabilityBadge from '../ui/ProbabilityBadge';
@@ -71,6 +74,28 @@ export default function NeetOptionEntry({
   const [displayLimit, setDisplayLimit] = useState(50);
   const [activeMobileTab, setActiveMobileTab] = useState<'available' | 'selected'>('available');
   const [showSaveFeedback, setShowSaveFeedback] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  // Download PDF Handler
+  const handleDownloadPdf = async () => {
+    if (selectedChoices.length === 0) {
+      alert('Your preference list is empty. Add at least one college before downloading your PDF.');
+      return;
+    }
+    try {
+      setIsGeneratingPdf(true);
+      await generateNeetPreferencePdf({
+        profile,
+        choices: selectedChoices,
+        isLocked: false
+      });
+    } catch (err: any) {
+      console.error('PDF Generation Error:', err);
+      alert(err?.message || 'Failed to generate PDF. Please try again.');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
 
   // Compute state-wise college counts across verified catalog
   const stateCounts = useMemo(() => {
@@ -255,7 +280,7 @@ export default function NeetOptionEntry({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <MotionButton
             variant="outline"
             size="sm"
@@ -265,6 +290,19 @@ export default function NeetOptionEntry({
           >
             NEET & MCC Rules Guide
           </MotionButton>
+
+          {selectedChoices.length > 0 && (
+            <MotionButton
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadPdf}
+              disabled={isGeneratingPdf}
+              className="text-xs border-emerald-600 text-emerald-800 hover:bg-emerald-50 font-semibold"
+              leftIcon={isGeneratingPdf ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5 text-emerald-600" />}
+            >
+              {isGeneratingPdf ? 'Generating PDF...' : 'Download My Preference List (PDF)'}
+            </MotionButton>
+          )}
 
           <MotionButton
             variant="ghost"
@@ -658,12 +696,24 @@ export default function NeetOptionEntry({
               </div>
 
               {selectedChoices.length > 0 && (
-                <button
-                  onClick={handleClearAll}
-                  className="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:underline"
-                >
-                  Clear All
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleDownloadPdf}
+                    disabled={isGeneratingPdf}
+                    className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 hover:underline flex items-center gap-1 cursor-pointer"
+                    title="Download My Preference List as PDF"
+                  >
+                    <Download className="w-3 h-3" />
+                    <span>{isGeneratingPdf ? 'PDF...' : 'Download PDF'}</span>
+                  </button>
+                  <span className="text-slate-300">•</span>
+                  <button
+                    onClick={handleClearAll}
+                    className="text-xs font-semibold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
+                  >
+                    Clear All
+                  </button>
+                </div>
               )}
             </div>
 

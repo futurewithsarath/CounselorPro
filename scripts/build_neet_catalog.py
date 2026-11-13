@@ -694,3 +694,4 @@ export const NEET_AUTHORITY_INFO: Record<NeetCounsellingAuthority, {{
 
 if __name__ == "__main__":
     build_catalog()
+

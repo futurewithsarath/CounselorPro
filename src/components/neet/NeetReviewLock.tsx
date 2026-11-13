@@ -20,6 +20,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { NeetStudentProfile, NeetChoice, NeetPracticeLock } from '../../types';
+import { generateNeetPreferencePdf } from '../../utils/neetPdfExport';
 import MotionButton from '../ui/MotionButton';
 import Confetti from '../ui/Confetti';
 import MockAllotmentScanner from '../ui/MockAllotmentScanner';
@@ -43,6 +44,8 @@ export default function NeetReviewLock({
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [lockData, setLockData] = useState<NeetPracticeLock | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   useEffect(() => {
     if (showConfetti) {
@@ -50,6 +53,25 @@ export default function NeetReviewLock({
       return () => clearTimeout(timer);
     }
   }, [showConfetti]);
+
+  // Download PDF Handler
+  const handleDownloadPdf = async () => {
+    try {
+      setIsGeneratingPdf(true);
+      setPdfError(null);
+      await generateNeetPreferencePdf({
+        profile,
+        choices,
+        lockData,
+        isLocked
+      });
+    } catch (err: any) {
+      console.error('PDF Generation Error:', err);
+      setPdfError(err?.message || 'Failed to generate PDF. Please try again.');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
 
   // Mock Allotment Simulation States
   const [isSimulating, setIsSimulating] = useState(false);
@@ -289,15 +311,39 @@ export default function NeetReviewLock({
           )}
         </div>
 
+        {/* PDF Generation Error Alert */}
+        {pdfError && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+              <span>{pdfError}</span>
+            </div>
+            <button onClick={() => setPdfError(null)} className="text-red-500 hover:text-red-700 font-bold px-1">✕</button>
+          </div>
+        )}
+
         {/* Choices List Table */}
         <div>
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="font-sans font-bold text-sm text-slate-900">
-              Submitted Preference Order ({choices.length} Choices)
-            </h4>
-            <span className="text-xs font-mono text-slate-500">
-              Priority 1 is Highest
-            </span>
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <div>
+              <h4 className="font-sans font-bold text-sm text-slate-900">
+                Submitted Preference Order ({choices.length} Choices)
+              </h4>
+              <span className="text-xs font-mono text-slate-500">
+                Priority 1 is Highest
+              </span>
+            </div>
+
+            <MotionButton
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadPdf}
+              disabled={isGeneratingPdf}
+              className="text-xs border-emerald-600 text-emerald-800 hover:bg-emerald-50 font-semibold"
+              leftIcon={isGeneratingPdf ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5 text-emerald-600" />}
+            >
+              {isGeneratingPdf ? 'Generating PDF...' : 'Download My Preference List (PDF)'}
+            </MotionButton>
           </div>
 
           <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 max-h-[400px] overflow-y-auto">
@@ -352,7 +398,18 @@ export default function NeetReviewLock({
             <p className="text-emerald-800">
               Your practice choices were locked at <strong>{lockData.lockedAt}</strong>. You can download or print your official practice option sheet below.
             </p>
-            <div className="flex items-center gap-2 pt-2">
+            <div className="flex items-center gap-2 pt-2 flex-wrap">
+              <MotionButton
+                variant="primary"
+                size="sm"
+                onClick={handleDownloadPdf}
+                disabled={isGeneratingPdf}
+                leftIcon={isGeneratingPdf ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-xs"
+              >
+                {isGeneratingPdf ? 'Generating PDF...' : 'Download My Preference List (PDF)'}
+              </MotionButton>
+
               <MotionButton
                 variant="outline"
                 size="sm"
@@ -395,15 +452,28 @@ export default function NeetReviewLock({
               </p>
             </div>
 
-            <MotionButton
-              variant="primary"
-              size="md"
-              onClick={() => setShowConfirmModal(true)}
-              className="text-xs"
-              leftIcon={<Lock className="w-3.5 h-3.5" />}
-            >
-              Lock Practice Choices
-            </MotionButton>
+            <div className="flex items-center gap-2 flex-wrap">
+              <MotionButton
+                variant="outline"
+                size="md"
+                onClick={handleDownloadPdf}
+                disabled={isGeneratingPdf}
+                className="text-xs border-emerald-600 text-emerald-800 hover:bg-emerald-50 font-semibold"
+                leftIcon={isGeneratingPdf ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5 text-emerald-600" />}
+              >
+                {isGeneratingPdf ? 'Generating PDF...' : 'Download My Preference List (PDF)'}
+              </MotionButton>
+
+              <MotionButton
+                variant="primary"
+                size="md"
+                onClick={() => setShowConfirmModal(true)}
+                className="text-xs"
+                leftIcon={<Lock className="w-3.5 h-3.5" />}
+              >
+                Lock Practice Choices
+              </MotionButton>
+            </div>
           </div>
         )}
 
