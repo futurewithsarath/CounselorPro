@@ -217,6 +217,8 @@ export interface NeetCollegeRecord {
   course: NeetCourseType;
   institutionType: NeetInstitutionType;
   sanctionedIntake: number;
+  quotaSeats?: number;
+  quotaName?: string;
   establishedYear: number;
   annualFee: number | null;
   feeNote?: string;
@@ -227,6 +229,9 @@ export interface NeetCollegeRecord {
   localArea?: 'AU' | 'SVU' | 'OU' | 'ALL_INDIA';
   minorityStatus?: 'NONE' | 'MUSLIM' | 'CHRISTIAN';
   genderEligibility: 'COED' | 'GIRLS';
+  nmcSerialNo?: number;
+  approvedIntake2024_25?: number;
+  approvedIntake2025_26?: number;
 }
 
 export interface NeetStudentProfile {

@@ -6,8 +6,13 @@ import { getFirestoreDb, firestoreUnavailable, setFirestoreUnavailable } from ".
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed. Use GET." });
   const datasetId = String(req.query.datasetId || "");
-  if (!/^(AP_EAPCET|TS_EAMCET)_(MPC|BIPC)_\d{4}$/.test(datasetId) && !/^NEET_UG_\d{4}(_\d{4})?(_VERIFIED)?$/.test(datasetId)) {
-    return res.status(400).json({ error: "Provide a valid exam_stream_year datasetId (e.g. AP_EAPCET_MPC_2025 or NEET_UG_2024_2025)." });
+  if (
+    !/^(AP_EAPCET|TS_EAMCET)_(MPC|BIPC)_\d{4}$/.test(datasetId) && 
+    !/^NEET_UG_\d{4}(_\d{4})?(_VERIFIED)?$/.test(datasetId) &&
+    !/^NEET_UG_\d{4}_ROUND\d+_MCC$/.test(datasetId) &&
+    !/^NMC_MBBS_\d{4}_\d{4}$/.test(datasetId)
+  ) {
+    return res.status(400).json({ error: "Provide a valid datasetId (e.g. AP_EAPCET_MPC_2025, NEET_UG_2024_2025, NEET_UG_2026_ROUND1_MCC, or NMC_MBBS_2025_2026)." });
   }
   try {
     const db = getFirestoreDb();
