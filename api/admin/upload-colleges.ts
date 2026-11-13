@@ -20,14 +20,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const metadata = payload?.metadata;
     const records = payload?.colleges;
     if (!metadata || !Array.isArray(records) || records.length < 1 || records.length > 5000) return res.status(400).json({ error: "Expected a versioned dataset with 1 to 5,000 college records." });
-    const expectedId = `${metadata.exam}_${String(metadata.stream).toUpperCase()}_${metadata.year}`;
-    if (metadata.datasetId !== expectedId || !["AP_EAPCET", "TS_EAMCET"].includes(metadata.exam) || !["MPC", "BIPC"].includes(String(metadata.stream).toUpperCase()) || !Number.isInteger(metadata.year)) {
-      return res.status(400).json({ error: "Dataset metadata is invalid or its identifier does not match exam, stream, and year." });
+    const isNeet = metadata.exam === "NEET_UG";
+    if (!["AP_EAPCET", "TS_EAMCET", "NEET_UG"].includes(metadata.exam)) {
+      return res.status(400).json({ error: "Exam must be AP_EAPCET, TS_EAMCET, or NEET_UG." });
+    }
+    if (!isNeet) {
+      const expectedId = `${metadata.exam}_${String(metadata.stream).toUpperCase()}_${metadata.year}`;
+      if (metadata.datasetId !== expectedId || !["MPC", "BIPC"].includes(String(metadata.stream).toUpperCase()) || !Number.isInteger(metadata.year)) {
+        return res.status(400).json({ error: "Dataset metadata is invalid or its identifier does not match exam, stream, and year." });
+      }
     }
     const ids = new Set<string>();
     for (const row of records) {
-      if (!row || typeof row.id !== "string" || !row.id || ids.has(row.id) || typeof row.code !== "string" || typeof row.name !== "string" || typeof row.branch !== "string" || row.exam !== metadata.exam || row.stream !== (String(metadata.stream).toUpperCase() === "BIPC" ? "BiPC" : "MPC") || row.year !== metadata.year || !row.cutoffsByLocalArea || typeof row.cutoffsByLocalArea !== "object") {
-        return res.status(400).json({ error: "Every record must have a unique id and match the dataset exam, stream, year, and cutoff schema." });
+      if (!row || typeof row.id !== "string" || !row.id || ids.has(row.id) || typeof row.code !== "string" || typeof row.name !== "string") {
+        return res.status(400).json({ error: "Every record must have a unique id, code, and name." });
       }
       ids.add(row.id);
     }
