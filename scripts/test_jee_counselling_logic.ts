@@ -76,7 +76,8 @@ const dummyChoices: JeePracticeChoice[] = [];
 // Add Choice 1: NIT Trichy CSE
 dummyChoices.push({
   id: 'choice-1',
-  choiceNumber: 1,
+  priority: 1,
+  programId: 'nit-226-cse',
   instituteCode: '226',
   instituteName: 'National Institute of Technology, Tiruchirappalli',
   instituteShortName: 'NIT Trichy',
@@ -84,14 +85,14 @@ dummyChoices.push({
   programCode: 'CSE',
   programName: 'Computer Science and Engineering',
   degree: '4 Years, Bachelor of Technology',
-  quota: determineNitQuota('Andhra Pradesh', 'Tamil Nadu'),
-  addedAt: new Date().toISOString()
+  quotaApplied: determineNitQuota('Andhra Pradesh', 'Tamil Nadu')
 });
 
 // Add Choice 2: NIT Warangal CSE
 dummyChoices.push({
   id: 'choice-2',
-  choiceNumber: 2,
+  priority: 2,
+  programId: 'nit-228-cse',
   instituteCode: '228',
   instituteName: 'National Institute of Technology, Warangal',
   instituteShortName: 'NIT Warangal',
@@ -99,14 +100,14 @@ dummyChoices.push({
   programCode: 'CSE',
   programName: 'Computer Science and Engineering',
   degree: '4 Years, Bachelor of Technology',
-  quota: determineNitQuota('Andhra Pradesh', 'Telangana'),
-  addedAt: new Date().toISOString()
+  quotaApplied: determineNitQuota('Andhra Pradesh', 'Telangana')
 });
 
 // Add Choice 3: NIT Andhra Pradesh CSE (Home State)
 dummyChoices.push({
   id: 'choice-3',
-  choiceNumber: 3,
+  priority: 3,
+  programId: 'nit-231-cse',
   instituteCode: '231',
   instituteName: 'National Institute of Technology, Andhra Pradesh',
   instituteShortName: 'NIT Andhra Pradesh',
@@ -114,17 +115,16 @@ dummyChoices.push({
   programCode: 'CSE',
   programName: 'Computer Science and Engineering',
   degree: '4 Years, Bachelor of Technology',
-  quota: determineNitQuota('Andhra Pradesh', 'Andhra Pradesh'),
-  addedAt: new Date().toISOString()
+  quotaApplied: determineNitQuota('Andhra Pradesh', 'Andhra Pradesh')
 });
 
 if (dummyChoices.length !== 3) {
   throw new Error('Choice count mismatch');
 }
-if (dummyChoices[0].choiceNumber !== 1 || dummyChoices[0].quota !== 'Other State (OS)') {
+if (dummyChoices[0].priority !== 1 || dummyChoices[0].quotaApplied !== 'Other State (OS)') {
   throw new Error('Choice 1 priority or quota invalid');
 }
-if (dummyChoices[2].choiceNumber !== 3 || dummyChoices[2].quota !== 'Home State (HS)') {
+if (dummyChoices[2].priority !== 3 || dummyChoices[2].quotaApplied !== 'Home State (HS)') {
   throw new Error('Choice 3 priority or quota invalid');
 }
 
