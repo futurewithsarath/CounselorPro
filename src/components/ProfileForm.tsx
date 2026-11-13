@@ -61,10 +61,11 @@ export default function ProfileForm({ exam, profile, onChange, onNext, onBack }:
     } else if (profile.rank > 200000) {
       tempErrors.rank = 'Please enter a rank below 200,000.';
     }
-    if (profile.stream === 'MPC' && profile.category === 'SC') {
-      tempErrors.category = 'Choose SC-I, SC-II, or SC-III as shown on your certificate to match the MPC cutoff table.';
-    } else if (profile.stream === 'BiPC' && ['SC-I', 'SC-II', 'SC-III'].includes(profile.category)) {
-      tempErrors.category = 'This BiPC source reports one SC category. Select SC.';
+    const isTripartiteSC = exam === 'TS_EAMCET' || (exam === 'AP_EAPCET' && profile.stream === 'MPC');
+    if (isTripartiteSC && profile.category === 'SC') {
+      tempErrors.category = 'Choose SC-I, SC-II, or SC-III as shown on your certificate to match the cutoff table.';
+    } else if (!isTripartiteSC && ['SC-I', 'SC-II', 'SC-III'].includes(profile.category)) {
+      tempErrors.category = 'This source reports one SC category. Select SC.';
     }
     setErrors(tempErrors);
     return Object.keys(tempErrors).length === 0;
@@ -191,7 +192,7 @@ export default function ProfileForm({ exam, profile, onChange, onNext, onBack }:
               <option value="BC-C">BC-C (Backward Class C)</option>
               <option value="BC-D">BC-D (Backward Class D)</option>
               <option value="BC-E">BC-E (Backward Class E)</option>
-              {profile.stream === 'BiPC' ? (
+              {exam === 'AP_EAPCET' && profile.stream === 'BiPC' ? (
                 <option value="SC">SC (Scheduled Caste)</option>
               ) : (
                 <>

@@ -169,11 +169,7 @@ export default function App() {
 
   const handleSwipeNext = () => {
     if (step === 'SELECT_EXAM' && profile.exam) {
-      if (profile.exam === 'TS_EAMCET' && profile.stream === 'BiPC') {
-        setStep('COMING_SOON');
-      } else {
-        setStep('ENTER_DETAILS');
-      }
+      setStep('ENTER_DETAILS');
     } else if (step === 'ENTER_DETAILS') {
       setStep('ENTRY_WORKFLOW');
     } else if (step === 'ENTRY_WORKFLOW') {
@@ -354,19 +350,15 @@ export default function App() {
                   setProfile(prev => ({
                     ...prev,
                     stream,
-                    category: stream === 'BiPC' && ['SC-I', 'SC-II', 'SC-III'].includes(prev.category)
+                    category: (prev.exam === 'AP_EAPCET' && stream === 'BiPC') && ['SC-I', 'SC-II', 'SC-III'].includes(prev.category)
                       ? 'SC'
-                      : stream === 'MPC' && prev.category === 'SC'
+                      : (prev.exam === 'TS_EAMCET' || stream === 'MPC') && prev.category === 'SC'
                         ? 'SC-I'
                         : prev.category,
                   }));
                 }}
                 onNext={() => {
-                  if (profile.exam === 'TS_EAMCET' && profile.stream === 'BiPC') {
-                    setStep('COMING_SOON');
-                  } else {
-                    setStep('ENTER_DETAILS');
-                  }
+                  setStep('ENTER_DETAILS');
                 }}
                 onBack={() => setStep('LANDING')}
               />
