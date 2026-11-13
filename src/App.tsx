@@ -8,12 +8,16 @@ import OptionEntry from './components/OptionEntry';
 import ChoiceRefinement from './components/ChoiceRefinement';
 import FinalReview from './components/FinalReview';
 import ComingSoon from './components/ComingSoon';
+import JeeProfileForm from './components/jee/JeeProfileForm';
+import JeeOptionEntry from './components/jee/JeeOptionEntry';
+import JeeReviewLock from './components/jee/JeeReviewLock';
+import JeeLearningCentre from './components/jee/JeeLearningCentre';
 
 const SuccessScreen = React.lazy(() => import('./components/SuccessScreen'));
 const AdminModal = React.lazy(() => import('./components/AdminModal'));
 
-import { StudentProfile, WebOption, ExamType } from './types';
-import { Compass, Sparkles, CheckCircle, GraduationCap, Database, Save, RefreshCw } from 'lucide-react';
+import { StudentProfile, WebOption, ExamType, JeeStudentProfile, JeePracticeChoice } from './types';
+import { Compass, Sparkles, CheckCircle, GraduationCap, Database, Save, RefreshCw, BookOpen } from 'lucide-react';
 import { loadRealCollegesForExam, COLLEGES_SOURCE, getDefaultDatasetYear } from './data/colleges';
 
 type StepType = 'LANDING' | 'SELECT_EXAM' | 'ENTER_DETAILS' | 'ENTRY_WORKFLOW' | 'REFINEMENT' | 'FINAL_REVIEW' | 'SUCCESS' | 'COMING_SOON';
@@ -76,6 +80,43 @@ export default function App() {
     return [];
   });
 
+  // JEE Main State Persistence
+  const [jeeProfile, setJeeProfile] = useState<JeeStudentProfile>(() => {
+    const saved = localStorage.getItem('counselor_jee_profile');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        // Fallback below
+      }
+    }
+    return {
+      admissionYear: 2025,
+      paper: 'Paper 1 (B.E./B.Tech)',
+      practiceMode: 'GUIDED',
+      stateOfEligibility: 'Andhra Pradesh',
+      crlRank: null,
+      category: 'OPEN',
+      categoryRank: null,
+      gender: 'Male',
+      isPwd: false
+    };
+  });
+
+  const [jeeChoices, setJeeChoices] = useState<JeePracticeChoice[]>(() => {
+    const saved = localStorage.getItem('counselor_jee_choices');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        // Fallback below
+      }
+    }
+    return [];
+  });
+
+  const [isJeeLearningOpen, setIsJeeLearningOpen] = useState(false);
+
   // Ensure we are strictly in light mode by removing the dark class and cleaning up theme storage
   useEffect(() => {
     document.documentElement.classList.remove('dark');
@@ -89,6 +130,15 @@ export default function App() {
         loaded: false,
         count: 0,
         source: 'Select an exam first'
+      });
+      return;
+    }
+
+    if (profile.exam === 'JEE_MAIN') {
+      setDbStatus({
+        loaded: true,
+        count: 31,
+        source: '31 NITs (Council of NITSER & JoSAA)'
       });
       return;
     }
@@ -145,6 +195,14 @@ export default function App() {
     localStorage.setItem('counselor_selectedOptions', JSON.stringify(selectedOptions));
   }, [selectedOptions]);
 
+  useEffect(() => {
+    localStorage.setItem('counselor_jee_profile', JSON.stringify(jeeProfile));
+  }, [jeeProfile]);
+
+  useEffect(() => {
+    localStorage.setItem('counselor_jee_choices', JSON.stringify(jeeChoices));
+  }, [jeeChoices]);
+
   // Save Draft state and handler
   const [showSaveToast, setShowSaveToast] = useState(false);
 
@@ -152,8 +210,10 @@ export default function App() {
     localStorage.setItem('counselor_step', step);
     localStorage.setItem('counselor_profile', JSON.stringify(profile));
     localStorage.setItem('counselor_selectedOptions', JSON.stringify(selectedOptions));
+    localStorage.setItem('counselor_jee_profile', JSON.stringify(jeeProfile));
+    localStorage.setItem('counselor_jee_choices', JSON.stringify(jeeChoices));
     setShowSaveToast(true);
-  }, [step, profile, selectedOptions]);
+  }, [step, profile, selectedOptions, jeeProfile, jeeChoices]);
 
   useEffect(() => {
     if (showSaveToast) {
@@ -231,6 +291,8 @@ export default function App() {
     localStorage.removeItem('counselor_step');
     localStorage.removeItem('counselor_profile');
     localStorage.removeItem('counselor_selectedOptions');
+    localStorage.removeItem('counselor_jee_profile');
+    localStorage.removeItem('counselor_jee_choices');
     setProfile({
       exam: null,
       stream: 'MPC',
@@ -239,7 +301,19 @@ export default function App() {
       category: 'OC',
       region: 'OU',
     });
+    setJeeProfile({
+      admissionYear: 2025,
+      paper: 'Paper 1 (B.E./B.Tech)',
+      practiceMode: 'GUIDED',
+      stateOfEligibility: 'Andhra Pradesh',
+      crlRank: null,
+      category: 'OPEN',
+      categoryRank: null,
+      gender: 'Male',
+      isPwd: false
+    });
     setSelectedOptions([]);
+    setJeeChoices([]);
     setStep('LANDING');
   }, []);
 
@@ -248,6 +322,14 @@ export default function App() {
     if (profile.exam !== exam) setSelectedOptions([]);
     setProfile(prev => {
       let category = prev.category;
+      if (exam === 'JEE_MAIN') {
+        return {
+          ...prev,
+          exam,
+          stream: 'MPC',
+          region: 'AU'
+        };
+      }
       if (exam === 'AP_EAPCET' && prev.stream === 'BiPC' && ['SC-I', 'SC-II', 'SC-III'].includes(category)) {
         category = 'SC';
       } else if ((exam === 'TS_EAMCET' || prev.stream === 'MPC') && category === 'SC') {
@@ -311,6 +393,17 @@ export default function App() {
                 <div className="flex items-center gap-1.5 px-1.5 sm:px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg text-[9px] sm:text-xs font-semibold font-mono border border-amber-100 whitespace-nowrap">
                   {profile.exam ? <><span className="hidden sm:inline">NO VERIFIED DATA</span><span className="sm:hidden">NO DATA</span></> : <span className="hidden sm:inline">SELECT AN EXAM</span>}
                 </div>
+              )}
+
+              {profile.exam === 'JEE_MAIN' && (
+                <button
+                  onClick={() => setIsJeeLearningOpen(true)}
+                  className="flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-[10px] sm:text-xs font-semibold font-mono border border-indigo-200 transition-all cursor-pointer shadow-2xs shrink-0"
+                  title="Open Freeze, Float & Slide Educational Guide"
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
+                  <span className="hidden sm:inline">RULE GUIDE</span>
+                </button>
               )}
 
               {step !== 'LANDING' && step !== 'SUCCESS' && (
@@ -380,32 +473,63 @@ export default function App() {
             )}
 
             {step === 'ENTER_DETAILS' && (
-              <ProfileForm
-                exam={profile.exam || 'TS_EAMCET'}
-                profile={profile}
-                onChange={setProfile}
-                onNext={() => setStep('ENTRY_WORKFLOW')}
-                onBack={() => setStep('SELECT_EXAM')}
-              />
+              profile.exam === 'JEE_MAIN' ? (
+                <JeeProfileForm
+                  profile={jeeProfile}
+                  onChange={setJeeProfile}
+                  onNext={() => setStep('ENTRY_WORKFLOW')}
+                  onBack={() => setStep('SELECT_EXAM')}
+                  onOpenLearningCentre={() => setIsJeeLearningOpen(true)}
+                />
+              ) : (
+                <ProfileForm
+                  exam={profile.exam || 'TS_EAMCET'}
+                  profile={profile}
+                  onChange={setProfile}
+                  onNext={() => setStep('ENTRY_WORKFLOW')}
+                  onBack={() => setStep('SELECT_EXAM')}
+                />
+              )
             )}
 
             {step === 'ENTRY_WORKFLOW' && (
-              <OptionEntry
-                profile={profile}
-                selectedOptions={selectedOptions}
-                onUpdateOptions={setSelectedOptions}
-                onNext={() => setStep('FINAL_REVIEW')}
-                onBack={() => setStep('ENTER_DETAILS')}
-              />
+              profile.exam === 'JEE_MAIN' ? (
+                <JeeOptionEntry
+                  profile={jeeProfile}
+                  selectedChoices={jeeChoices}
+                  onUpdateChoices={setJeeChoices}
+                  onNext={() => setStep('FINAL_REVIEW')}
+                  onBack={() => setStep('ENTER_DETAILS')}
+                  onOpenLearningCentre={() => setIsJeeLearningOpen(true)}
+                />
+              ) : (
+                <OptionEntry
+                  profile={profile}
+                  selectedOptions={selectedOptions}
+                  onUpdateOptions={setSelectedOptions}
+                  onNext={() => setStep('FINAL_REVIEW')}
+                  onBack={() => setStep('ENTER_DETAILS')}
+                />
+              )
             )}
 
             {step === 'FINAL_REVIEW' && (
-              <FinalReview
-                profile={profile}
-                selectedOptions={selectedOptions}
-                onBack={() => setStep('ENTRY_WORKFLOW')}
-                onFinish={() => setStep('SUCCESS')}
-              />
+              profile.exam === 'JEE_MAIN' ? (
+                <JeeReviewLock
+                  profile={jeeProfile}
+                  choices={jeeChoices}
+                  onBack={() => setStep('ENTRY_WORKFLOW')}
+                  onUnlock={() => setStep('ENTRY_WORKFLOW')}
+                  onOpenLearningCentre={() => setIsJeeLearningOpen(true)}
+                />
+              ) : (
+                <FinalReview
+                  profile={profile}
+                  selectedOptions={selectedOptions}
+                  onBack={() => setStep('ENTRY_WORKFLOW')}
+                  onFinish={() => setStep('SUCCESS')}
+                />
+              )
             )}
 
             {step === 'SUCCESS' && (
@@ -441,6 +565,11 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* JoSAA NIT Counselling Rules & Strategy Learning Centre Modal */}
+      {isJeeLearningOpen && (
+        <JeeLearningCentre onClose={() => setIsJeeLearningOpen(false)} />
+      )}
 
 
       

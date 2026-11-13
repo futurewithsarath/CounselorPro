@@ -19,3 +19,4 @@ for fname in ['public/data/AP_EAPCET_MPC_2025.json', 'public/data/AP_EAPCET_BIPC
     with open(fname, 'w', encoding='utf-8') as f:
         json.dump(d, f, indent=2)
     print(f"Updated {fname}: populated district for {len(d['colleges'])} records")
+

@@ -1,4 +1,4 @@
-export type ExamType = 'AP_EAPCET' | 'TS_EAMCET';
+export type ExamType = 'AP_EAPCET' | 'TS_EAMCET' | 'JEE_MAIN';
 export type ReservationCategory = 'OC' | 'BC-A' | 'BC-B' | 'BC-C' | 'BC-D' | 'BC-E' | 'SC' | 'SC-I' | 'SC-II' | 'SC-III' | 'ST' | 'EWS';
 export type CutoffCategory = 'OC' | 'SC' | 'SC_I' | 'SC_II' | 'SC_III' | 'ST' | 'BC_A' | 'BC_B' | 'BC_C' | 'BC_D' | 'BC_E' | 'OC_EWS';
 export type LocalArea = 'AU' | 'SVU' | 'OU' | 'NON_LOCAL';
@@ -99,4 +99,69 @@ export interface ChatMessage {
   sender: 'user' | 'assistant';
   text: string;
   timestamp: string;
+}
+
+// ==========================================
+// JEE MAIN (JoSAA NIT) COUNSELLING TYPES
+// ==========================================
+
+export type JeeCategory = 'OPEN' | 'GEN-EWS' | 'OBC-NCL' | 'SC' | 'ST';
+export type JeePracticeMode = 'GUIDED' | 'PROFILE_BASED';
+
+export interface JeeStudentProfile {
+  admissionYear: number;
+  paper: 'Paper 1 (B.E./B.Tech)';
+  practiceMode: JeePracticeMode;
+  stateOfEligibility: string; // Indian State/UT from which Class XII was passed
+  crlRank?: number | null; // Optional CRL rank
+  category: JeeCategory;
+  categoryRank?: number | null; // Optional Category rank
+  gender: 'Male' | 'Female';
+  isPwd: boolean;
+  pwdSubcategory?: string;
+}
+
+export interface NitInstitute {
+  code: string; // Official JoSAA code (201 - 231)
+  name: string; // Official full name
+  shortName: string; // Short recognizable name (e.g. "NIT Trichy")
+  state: string; // State / UT
+  location: string; // City / Town
+  establishedYear: number;
+  nirfTier?: string;
+}
+
+export interface NitAcademicProgram {
+  id: string; // e.g. "nit-228-cse"
+  instituteCode: string;
+  instituteName: string;
+  instituteShortName: string;
+  instituteState: string;
+  programCode: string; // e.g. "CSE", "ECE"
+  programName: string; // Full branch name
+  degree: string; // e.g. "4 Years, Bachelor of Technology"
+  durationYears: number;
+}
+
+export interface JeePracticeChoice {
+  id: string; // unique for each choice in the practice list
+  priority: number; // 1-indexed order
+  programId: string;
+  instituteCode: string;
+  instituteName: string;
+  instituteShortName: string;
+  instituteState: string;
+  programCode: string;
+  programName: string;
+  degree: string;
+  quotaApplied: 'Home State (HS)' | 'Other State (OS)';
+}
+
+export interface JeePracticeLock {
+  lockedAt: string;
+  sessionId: string;
+  profile: JeeStudentProfile;
+  choices: JeePracticeChoice[];
+  totalChoices: number;
+  totalNits: number;
 }
