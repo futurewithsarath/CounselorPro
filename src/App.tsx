@@ -12,14 +12,19 @@ import JeeProfileForm from './components/jee/JeeProfileForm';
 import JeeOptionEntry from './components/jee/JeeOptionEntry';
 import JeeReviewLock from './components/jee/JeeReviewLock';
 import JeeLearningCentre from './components/jee/JeeLearningCentre';
+import NeetProfileForm from './components/neet/NeetProfileForm';
+import NeetOptionEntry from './components/neet/NeetOptionEntry';
+import NeetReviewLock from './components/neet/NeetReviewLock';
+import NeetLearningCentre from './components/neet/NeetLearningCentre';
 import MotionButton from './components/ui/MotionButton';
 
 const SuccessScreen = React.lazy(() => import('./components/SuccessScreen'));
 const AdminModal = React.lazy(() => import('./components/AdminModal'));
 
-import { StudentProfile, WebOption, ExamType, JeeStudentProfile, JeePracticeChoice } from './types';
-import { Compass, Sparkles, CheckCircle, GraduationCap, Database, Save, RefreshCw, BookOpen } from 'lucide-react';
+import { StudentProfile, WebOption, ExamType, JeeStudentProfile, JeePracticeChoice, NeetStudentProfile, NeetChoice } from './types';
+import { Compass, Sparkles, CheckCircle, GraduationCap, Database, Save, RefreshCw, BookOpen, Stethoscope } from 'lucide-react';
 import { loadRealCollegesForExam, COLLEGES_SOURCE, getDefaultDatasetYear } from './data/colleges';
+import { NEET_COLLEGES_CATALOG } from './data/neetCatalog';
 
 type StepType = 'LANDING' | 'SELECT_EXAM' | 'ENTER_DETAILS' | 'ENTRY_WORKFLOW' | 'REFINEMENT' | 'FINAL_REVIEW' | 'SUCCESS' | 'COMING_SOON';
 
@@ -118,6 +123,46 @@ export default function App() {
 
   const [isJeeLearningOpen, setIsJeeLearningOpen] = useState(false);
 
+  // NEET UG State Persistence
+  const [neetProfile, setNeetProfile] = useState<NeetStudentProfile>(() => {
+    const saved = localStorage.getItem('counselor_neet_profile');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        // Fallback below
+      }
+    }
+    return {
+      admissionYear: 2024,
+      allIndiaRank: 18500,
+      neetScore: 615,
+      category: 'UR',
+      gender: 'Male',
+      isPwd: false,
+      domicileState: 'Andhra Pradesh',
+      localArea: 'AU',
+      minority: 'NONE',
+      pcbMarksPercentage: 75,
+      activeAuthority: 'ALL',
+      selectedCourses: ['MBBS', 'BDS', 'BAMS']
+    };
+  });
+
+  const [neetChoices, setNeetChoices] = useState<NeetChoice[]>(() => {
+    const saved = localStorage.getItem('counselor_neet_choices');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        // Fallback below
+      }
+    }
+    return [];
+  });
+
+  const [isNeetLearningOpen, setIsNeetLearningOpen] = useState(false);
+
   // Ensure we are strictly in light mode by removing the dark class and cleaning up theme storage
   useEffect(() => {
     document.documentElement.classList.remove('dark');
@@ -140,6 +185,15 @@ export default function App() {
         loaded: true,
         count: 31,
         source: '31 NITs (Council of NITSER & JoSAA)'
+      });
+      return;
+    }
+
+    if (profile.exam === 'NEET_UG') {
+      setDbStatus({
+        loaded: true,
+        count: NEET_COLLEGES_CATALOG.length,
+        source: `${NEET_COLLEGES_CATALOG.length} Verified NEET Medical & AYUSH Records (MCC, YSRUHS, KNRUHS, AACCC)`
       });
       return;
     }
@@ -204,6 +258,14 @@ export default function App() {
     localStorage.setItem('counselor_jee_choices', JSON.stringify(jeeChoices));
   }, [jeeChoices]);
 
+  useEffect(() => {
+    localStorage.setItem('counselor_neet_profile', JSON.stringify(neetProfile));
+  }, [neetProfile]);
+
+  useEffect(() => {
+    localStorage.setItem('counselor_neet_choices', JSON.stringify(neetChoices));
+  }, [neetChoices]);
+
   // Save Draft state and handler
   const [showSaveToast, setShowSaveToast] = useState(false);
 
@@ -213,8 +275,10 @@ export default function App() {
     localStorage.setItem('counselor_selectedOptions', JSON.stringify(selectedOptions));
     localStorage.setItem('counselor_jee_profile', JSON.stringify(jeeProfile));
     localStorage.setItem('counselor_jee_choices', JSON.stringify(jeeChoices));
+    localStorage.setItem('counselor_neet_profile', JSON.stringify(neetProfile));
+    localStorage.setItem('counselor_neet_choices', JSON.stringify(neetChoices));
     setShowSaveToast(true);
-  }, [step, profile, selectedOptions, jeeProfile, jeeChoices]);
+  }, [step, profile, selectedOptions, jeeProfile, jeeChoices, neetProfile, neetChoices]);
 
   useEffect(() => {
     if (showSaveToast) {
@@ -294,6 +358,8 @@ export default function App() {
     localStorage.removeItem('counselor_selectedOptions');
     localStorage.removeItem('counselor_jee_profile');
     localStorage.removeItem('counselor_jee_choices');
+    localStorage.removeItem('counselor_neet_profile');
+    localStorage.removeItem('counselor_neet_choices');
     setProfile({
       exam: null,
       stream: 'MPC',
@@ -313,8 +379,23 @@ export default function App() {
       gender: 'Male',
       isPwd: false
     });
+    setNeetProfile({
+      admissionYear: 2024,
+      allIndiaRank: 18500,
+      neetScore: 615,
+      category: 'UR',
+      gender: 'Male',
+      isPwd: false,
+      domicileState: 'Andhra Pradesh',
+      localArea: 'AU',
+      minority: 'NONE',
+      pcbMarksPercentage: 75,
+      activeAuthority: 'ALL',
+      selectedCourses: ['MBBS', 'BDS', 'BAMS']
+    });
     setSelectedOptions([]);
     setJeeChoices([]);
+    setNeetChoices([]);
     setStep('LANDING');
   }, []);
 
@@ -328,6 +409,14 @@ export default function App() {
           ...prev,
           exam,
           stream: 'MPC',
+          region: 'AU'
+        };
+      }
+      if (exam === 'NEET_UG') {
+        return {
+          ...prev,
+          exam,
+          stream: 'BiPC',
           region: 'AU'
         };
       }
@@ -494,6 +583,14 @@ export default function App() {
                   onBack={() => setStep('SELECT_EXAM')}
                   onOpenLearningCentre={() => setIsJeeLearningOpen(true)}
                 />
+              ) : profile.exam === 'NEET_UG' ? (
+                <NeetProfileForm
+                  profile={neetProfile}
+                  onChange={setNeetProfile}
+                  onNext={() => setStep('ENTRY_WORKFLOW')}
+                  onBack={() => setStep('SELECT_EXAM')}
+                  onOpenLearningCentre={() => setIsNeetLearningOpen(true)}
+                />
               ) : (
                 <ProfileForm
                   exam={profile.exam || 'TS_EAMCET'}
@@ -515,6 +612,15 @@ export default function App() {
                   onBack={() => setStep('ENTER_DETAILS')}
                   onOpenLearningCentre={() => setIsJeeLearningOpen(true)}
                 />
+              ) : profile.exam === 'NEET_UG' ? (
+                <NeetOptionEntry
+                  profile={neetProfile}
+                  selectedChoices={neetChoices}
+                  onUpdateChoices={setNeetChoices}
+                  onNext={() => setStep('FINAL_REVIEW')}
+                  onBack={() => setStep('ENTER_DETAILS')}
+                  onOpenLearningCentre={() => setIsNeetLearningOpen(true)}
+                />
               ) : (
                 <OptionEntry
                   profile={profile}
@@ -534,6 +640,14 @@ export default function App() {
                   onBack={() => setStep('ENTRY_WORKFLOW')}
                   onUnlock={() => setStep('ENTRY_WORKFLOW')}
                   onOpenLearningCentre={() => setIsJeeLearningOpen(true)}
+                />
+              ) : profile.exam === 'NEET_UG' ? (
+                <NeetReviewLock
+                  profile={neetProfile}
+                  choices={neetChoices}
+                  onBack={() => setStep('ENTRY_WORKFLOW')}
+                  onUnlock={() => setStep('ENTRY_WORKFLOW')}
+                  onOpenLearningCentre={() => setIsNeetLearningOpen(true)}
                 />
               ) : (
                 <FinalReview
@@ -583,6 +697,12 @@ export default function App() {
       {isJeeLearningOpen && (
         <JeeLearningCentre onClose={() => setIsJeeLearningOpen(false)} />
       )}
+
+      {/* NEET UG Counselling Rules & Regulations Learning Centre Modal */}
+      <NeetLearningCentre 
+        isOpen={isNeetLearningOpen} 
+        onClose={() => setIsNeetLearningOpen(false)} 
+      />
 
 
       

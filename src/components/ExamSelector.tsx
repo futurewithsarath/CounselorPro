@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ExamType } from '../types';
-import { ArrowRight, Landmark, GraduationCap, Cpu, FlaskConical, Building2, ShieldCheck, Check } from 'lucide-react';
+import { ArrowRight, Landmark, GraduationCap, Cpu, FlaskConical, Building2, ShieldCheck, Check, Stethoscope } from 'lucide-react';
 import MotionButton from './ui/MotionButton';
 
 interface ExamSelectorProps {
@@ -35,7 +35,7 @@ export default function ExamSelector({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-8">
         {/* AP EAPCET Option Card */}
         <motion.div
           onClick={() => onSelect('AP_EAPCET')}
@@ -175,11 +175,61 @@ export default function ExamSelector({
             </span>
           </div>
         </motion.div>
+
+        {/* NEET UG (Medical & AYUSH) Card */}
+        <motion.div
+          onClick={() => onSelect('NEET_UG')}
+          id="select-neet-ug"
+          whileHover={{ y: -4, scale: 1.015 }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ type: 'spring', stiffness: 450, damping: 25 }}
+          className={`cursor-pointer group rounded-2xl p-5 border-2 transition-colors flex flex-col justify-between min-h-[300px] relative overflow-hidden ${
+            selectedExam === 'NEET_UG'
+              ? 'border-emerald-600 bg-emerald-50/40 shadow-lg shadow-emerald-600/10'
+              : 'border-slate-200 bg-white hover:border-emerald-200 hover:shadow-md'
+          }`}
+        >
+          {selectedExam === 'NEET_UG' && (
+            <motion.div 
+              layoutId="activeExamGlow"
+              className="absolute inset-0 bg-emerald-500/5 pointer-events-none"
+              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            />
+          )}
+
+          <div className="space-y-3 relative z-10">
+            <div className="flex items-center justify-between">
+              <div className={`p-3 rounded-xl w-fit transition-colors ${selectedExam === 'NEET_UG' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50 text-emerald-700'}`}>
+                <Stethoscope className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                MBBS / BDS / AYUSH
+              </span>
+            </div>
+            <div>
+              <h3 className="font-sans font-bold text-lg text-slate-900">NEET UG (Medical)</h3>
+              <p className="text-[11px] text-emerald-700 font-mono font-semibold mt-0.5">ALL INDIA & STATE COUNSELLING</p>
+            </div>
+            <p className="text-slate-600 text-xs leading-relaxed">
+              Medical & Dental options simulation across <strong>MCC (AIQ 15%, AIIMS, JIPMER, Deemed)</strong>, <strong>Dr. YSRUHS (AP 85%)</strong>, <strong>KNRUHS (Telangana 85%)</strong>, and <strong>AACCC (AYUSH)</strong>.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-4 relative z-10">
+            <span className="text-[11px] font-mono text-slate-500">MCC • STATES • AACCC</span>
+            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full inline-flex items-center gap-1 transition-all ${
+              selectedExam === 'NEET_UG' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700'
+            }`}>
+              {selectedExam === 'NEET_UG' && <Check className="w-3.5 h-3.5" />}
+              {selectedExam === 'NEET_UG' ? 'Selected' : 'Select'}
+            </span>
+          </div>
+        </motion.div>
       </div>
 
       {/* Stream Selection for State Exams */}
       <AnimatePresence>
-        {selectedExam && selectedExam !== 'JEE_MAIN' && (
+        {selectedExam && !['JEE_MAIN', 'NEET_UG'].includes(selectedExam) && (
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
@@ -286,6 +336,45 @@ export default function ExamSelector({
                   </span>
                   <span className="bg-white/80 border border-indigo-200 text-indigo-900 px-2.5 py-1 rounded-md">
                     Interactive Freeze / Float / Slide Guide
+                  </span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Track info for NEET UG */}
+        {selectedExam === 'NEET_UG' && (
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.25 }}
+            className="mt-8 bg-emerald-50/60 border border-emerald-200 rounded-2xl p-6 shadow-xs"
+          >
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-emerald-600 text-white shrink-0 mt-0.5 shadow-xs">
+                <Stethoscope className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-sans font-bold text-emerald-950 text-sm">
+                  Academic Track: NEET UG Medical & Dental Admissions (MBBS, BDS, AYUSH)
+                </h4>
+                <p className="text-xs text-emerald-800 mt-1 leading-relaxed">
+                  You are entering the <strong>NEET UG Multi-Authority Counselling Practice Workspace</strong>. Practice option sequencing across <strong>MCC (15% AIQ, AIIMS, JIPMER, Deemed)</strong>, <strong>Dr. YSRUHS (AP 85% CQ & MQ)</strong>, <strong>KNRUHS (Telangana 85% CQ & MQ)</strong>, and <strong>AACCC (AYUSH Central AIQ)</strong> with authentic 2024 cutoff benchmarks.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-mono">
+                  <span className="bg-white/80 border border-emerald-200 text-emerald-900 px-2.5 py-1 rounded-md">
+                    MCC: 15% AIQ & AIIMS
+                  </span>
+                  <span className="bg-white/80 border border-emerald-200 text-emerald-900 px-2.5 py-1 rounded-md">
+                    AP & Telangana State Quotas
+                  </span>
+                  <span className="bg-white/80 border border-emerald-200 text-emerald-900 px-2.5 py-1 rounded-md">
+                    AACCC: BAMS, BHMS, BUMS
+                  </span>
+                  <span className="bg-white/80 border border-emerald-200 text-emerald-900 px-2.5 py-1 rounded-md">
+                    PCB Marks Eligibility Checks
                   </span>
                 </div>
               </div>

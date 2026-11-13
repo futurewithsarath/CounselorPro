@@ -61,7 +61,7 @@ export default function LandingPage({ onStart }: LandingPageProps) {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="text-slate-600 text-lg sm:text-xl font-normal leading-relaxed max-w-2xl"
           >
-            India's most realistic web options simulation platform for <strong className="text-slate-850">AP EAPCET</strong> and <strong className="text-slate-850">TS EAMCET</strong> engineering counseling. Avoid costly ordering errors that lead to bad seat allotments.
+            India's most comprehensive web options simulation platform for <strong className="text-slate-850">AP EAPCET</strong>, <strong className="text-slate-850">TS EAMCET</strong>, <strong className="text-slate-850">JEE Main (JoSAA NITs)</strong>, and <strong className="text-slate-850">NEET UG Medical & AYUSH</strong>. Avoid costly ordering errors that lead to bad seat allotments.
           </motion.p>
 
           <motion.div 
@@ -94,19 +94,23 @@ export default function LandingPage({ onStart }: LandingPageProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.4 }}
-            className="pt-8 border-t border-slate-200 grid grid-cols-3 gap-6"
+            className="pt-8 border-t border-slate-200 grid grid-cols-4 gap-4"
           >
             <div>
-              <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-sans">100%</p>
-              <p className="text-xs text-slate-500 font-mono tracking-wider uppercase mt-1">Realistic Portal</p>
+              <p className="text-xl sm:text-2xl font-extrabold text-slate-900 font-sans">2,818</p>
+              <p className="text-[10px] text-slate-500 font-mono tracking-wider uppercase mt-0.5">State Cutoffs</p>
             </div>
             <div>
-              <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-sans">2,818</p>
-              <p className="text-xs text-slate-500 font-mono tracking-wider uppercase mt-1">Verified Cutoffs</p>
+              <p className="text-xl sm:text-2xl font-extrabold text-slate-900 font-sans">31 NITs</p>
+              <p className="text-[10px] text-slate-500 font-mono tracking-wider uppercase mt-0.5">JoSAA Choice</p>
             </div>
             <div>
-              <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-sans">31 NITs</p>
-              <p className="text-xs text-slate-500 font-mono tracking-wider uppercase mt-1">JoSAA Simulation</p>
+              <p className="text-xl sm:text-2xl font-extrabold text-slate-900 font-sans">NEET UG</p>
+              <p className="text-[10px] text-slate-500 font-mono tracking-wider uppercase mt-0.5">MBBS & AYUSH</p>
+            </div>
+            <div>
+              <p className="text-xl sm:text-2xl font-extrabold text-slate-900 font-sans">100%</p>
+              <p className="text-[10px] text-slate-500 font-mono tracking-wider uppercase mt-0.5">Authentic Data</p>
             </div>
           </motion.div>
         </div>

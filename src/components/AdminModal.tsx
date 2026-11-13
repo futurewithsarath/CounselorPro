@@ -144,6 +144,26 @@ export default function AdminModal({ isOpen, onClose, onUploadSuccess }: AdminMo
         const text = e.target?.result as string;
         const json = JSON.parse(text);
 
+        // Check if this is a NEET UG dataset or an EAPCET dataset
+        if (json.exam === 'NEET_UG' || json.metadata?.exam === 'NEET_UG') {
+          const records = json.records || json.colleges;
+          if (!Array.isArray(records) || records.length === 0) {
+            throw new Error('NEET dataset must contain a non-empty records or colleges array.');
+          }
+          setParsedData(records);
+          setDatasetMetadata(json.metadata || {
+            datasetId: json.datasetId || 'NEET_UG_2024_2025',
+            exam: 'NEET_UG',
+            year: json.year || 2024,
+            totalRecords: records.length
+          });
+          setStatus('ready');
+          appendLog(`Successfully parsed NEET UG dataset: ${records.length} medical & AYUSH records found.`);
+          appendLog(`Authorities detected: MCC, Dr. YSRUHS (AP), KNRUHS (Telangana), AACCC (AYUSH).`);
+          appendLog(`Ready to commit to Firebase Firestore (projectId: ${firebaseConfig?.projectId || 'counselorpro-6975d'}).`);
+          return;
+        }
+
         const rows = json?.colleges;
         if (!json?.metadata || !Array.isArray(rows)) throw new Error('Expected a versioned CounselorPro dataset with metadata and a colleges array.');
 

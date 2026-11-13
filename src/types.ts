@@ -1,4 +1,4 @@
-export type ExamType = 'AP_EAPCET' | 'TS_EAMCET' | 'JEE_MAIN';
+export type ExamType = 'AP_EAPCET' | 'TS_EAMCET' | 'JEE_MAIN' | 'NEET_UG';
 export type ReservationCategory = 'OC' | 'BC-A' | 'BC-B' | 'BC-C' | 'BC-D' | 'BC-E' | 'SC' | 'SC-I' | 'SC-II' | 'SC-III' | 'ST' | 'EWS';
 export type CutoffCategory = 'OC' | 'SC' | 'SC_I' | 'SC_II' | 'SC_III' | 'ST' | 'BC_A' | 'BC_B' | 'BC_C' | 'BC_D' | 'BC_E' | 'OC_EWS';
 export type LocalArea = 'AU' | 'SVU' | 'OU' | 'NON_LOCAL';
@@ -165,3 +165,111 @@ export interface JeePracticeLock {
   totalChoices: number;
   totalNits: number;
 }
+
+// ==========================================
+// NEET UG COUNSELLING TYPES (MCC, STATE, AACCC)
+// ==========================================
+
+export type NeetCounsellingAuthority = 'MCC' | 'AP_STATE' | 'TG_STATE' | 'AACCC';
+export type NeetCourseType = 'MBBS' | 'BDS' | 'BAMS' | 'BHMS' | 'BUMS' | 'BSMS';
+export type NeetCategory = 'UR' | 'EWS' | 'OBC' | 'SC' | 'ST';
+export type NeetInstitutionType = 
+  | 'AIIMS'
+  | 'CENTRAL_INSTITUTE'
+  | 'GOVT_MEDICAL'
+  | 'GOVT_DENTAL'
+  | 'GOVT_AYUSH'
+  | 'PVT_MEDICAL'
+  | 'PVT_DENTAL'
+  | 'PVT_AYUSH'
+  | 'DEEMED_UNIVERSITY'
+  | 'NATIONAL_AYUSH';
+
+export type NeetQuotaType = 
+  | 'AIQ' 
+  | 'AIIMS' 
+  | 'JIPMER_OPEN' 
+  | 'CENTRAL_UNIV' 
+  | 'DEEMED_PAID' 
+  | 'STATE_CQ' 
+  | 'STATE_MQ_B' 
+  | 'STATE_MQ_C' 
+  | 'AYUSH_AIQ' 
+  | 'AYUSH_NATIONAL';
+
+export interface NeetCutoffSet {
+  UR?: number | null;
+  EWS?: number | null;
+  OBC?: number | null;
+  SC?: number | null;
+  ST?: number | null;
+  PwD?: number | null;
+}
+
+export interface NeetCollegeRecord {
+  id: string; // e.g. "mcc-aiims-delhi-mbbs"
+  code: string;
+  name: string;
+  shortName: string;
+  state: string;
+  city: string;
+  authority: NeetCounsellingAuthority;
+  course: NeetCourseType;
+  institutionType: NeetInstitutionType;
+  sanctionedIntake: number;
+  establishedYear: number;
+  annualFee: number | null;
+  feeNote?: string;
+  quota: NeetQuotaType;
+  cutoffs: NeetCutoffSet;
+  source: string;
+  nirfRank?: number;
+  localArea?: 'AU' | 'SVU' | 'OU' | 'ALL_INDIA';
+  minorityStatus?: 'NONE' | 'MUSLIM' | 'CHRISTIAN';
+  genderEligibility: 'COED' | 'GIRLS';
+}
+
+export interface NeetStudentProfile {
+  admissionYear: number;
+  allIndiaRank: number;
+  neetScore: number;
+  category: NeetCategory;
+  categoryRank?: number | null;
+  gender: 'Male' | 'Female';
+  isPwd: boolean;
+  domicileState: string;
+  localArea?: 'AU' | 'SVU' | 'OU' | 'NON_LOCAL';
+  minority: 'NONE' | 'MUSLIM' | 'CHRISTIAN' | 'OTHER';
+  pcbMarksPercentage: number;
+  activeAuthority: NeetCounsellingAuthority | 'ALL';
+  selectedCourses: NeetCourseType[];
+}
+
+export interface NeetChoice {
+  id: string;
+  priority: number;
+  collegeId: string;
+  collegeCode: string;
+  collegeName: string;
+  shortName: string;
+  course: NeetCourseType;
+  authority: NeetCounsellingAuthority;
+  quota: NeetQuotaType;
+  state: string;
+  city: string;
+  institutionType: NeetInstitutionType;
+  annualFee: number | null;
+  cutoffAIR?: number | null;
+}
+
+export interface NeetPracticeLock {
+  lockedAt: string;
+  sessionId: string;
+  profile: NeetStudentProfile;
+  choices: NeetChoice[];
+  totalChoices: number;
+  totalColleges: number;
+  authorityBreakdown: Record<NeetCounsellingAuthority, number>;
+  courseBreakdown: Record<NeetCourseType, number>;
+}
+

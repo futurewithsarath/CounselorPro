@@ -63,7 +63,24 @@ CounselorPro provides a realistic, safe sandbox where candidates can:
 
 ---
 
-### 3. ✨ Tactile UI/UX & Motion Design
+### 3. 🩺 NEET UG Medical & AYUSH Counselling Module
+- **Multi-Authority Counselling Architecture:**
+  - **MCC (Medical Counselling Committee):** 15% All India Quota (AIQ), 100% seats in all **AIIMS** (AIIMS New Delhi, Bhopal, Bhubaneswar, Jodhpur, Mangalagiri, Bibinagar, Rishikesh, Raipur, Patna, etc.), **JIPMER** Puducherry & Karaikal, **Central Universities** (DU MAMC/LHMC/UCMS, IMS-BHU, JNMC AMU, Jamia), and premier **Deemed Universities** (KMC Manipal, KMC Mangalore, Hamdard, Sri Ramachandra, Amrita, DY Patil).
+  - **Dr. YSRUHS (Andhra Pradesh):** 85% Competent Authority Quota (CQ) partitioned strictly by **AU Area** and **SVU Area**, plus Category B Management Quota (MQ) for private medical colleges.
+  - **KNRUHS (Telangana):** 85% State Quota (OU Local Area) + 15% Unreserved Quota under G.O.Ms. 114 & G.O.Ms. 72, plus Management Quota & Minority Medical Colleges (Deccan, Shadan).
+  - **AACCC (Ministry of Ayush):** 15% All India Quota & 100% National Autonomous Institutes in **BAMS** (National Institute of Ayurveda Jaipur, All India Institute of Ayurveda Delhi, IMS-BHU), **BHMS** (National Institute of Homoeopathy Kolkata), and **BUMS** (National Institute of Unani Medicine Bangalore).
+- **Statutory Eligibility & Safeguard Engine:**
+  - **Class 12th PCB Aggregate Check:** Enforces NMC statutory minimums (>= 50% for UR/EWS, >= 40% for OBC/SC/ST, >= 45% for PwD) with real-time feedback.
+  - **Gender Safeguards:** Enforces female-only admission criteria for colleges like LHMC New Delhi.
+  - **Domicile Enforcement:** Verifies state domicile boundaries for AP and Telangana 85% Competent Authority Quota seats.
+- **4-Tier Probability Engine & Mock Allotment:**
+  - Candidate AIR is matched against verified 2024 closing ranks across MCC, Dr. YSRUHS, KNRUHS, and AACCC.
+  - 1.2-second animated mock allotment scanner reveals the highest sequenced preference meeting cutoff thresholds with celebratory card reveal and confetti burst.
+- **Interactive NEET Learning Centre:** Comprehensive guide covering MCC Free Exit vs Forfeiture rules in Round 1/2, Round 3 strict locking, stray vacancy debarment rules, state bond policies (₹3,00,000 bond penalty), and security deposit refund tables.
+
+---
+
+### 4. ✨ Tactile UI/UX & Motion Design
 - **Snappy Spring Physics:** Reusable `<MotionButton>` component with spring press and hover physics (`whileHover={{ y: -2, scale: 1.02 }}`, `whileTap={{ scale: 0.95 }}`).
 - **Tactile Feedback:** Subtle light-sweep shimmer hover effect and click ripple pulse on primary Emerald CTAs.
 - **Smooth Page Transitions:** Seamless 0.25s fade + upward slide transitions (`<AnimatePresence mode="wait">`) across all wizard steps.
@@ -86,7 +103,8 @@ All college records and cutoffs are authentic government-published statements:
 | **TG EAPCET** | MPC | 2025 | **942** | TGCHE / TSCHE Final Phase Last Rank Statement |
 | **TG EAPCET** | BiPC | 2025 | **189** | TGCHE BiPC Final Phase Statement |
 | **JEE Main (JoSAA)** | B.Tech | 2025 | **237** | Council of NITSER & JoSAA Official Seat Information |
-| **Total Verified State Records** | — | — | **2,818** | **Zero synthetic or hallucinated cutoffs** |
+| **NEET UG (Medical/AYUSH)** | MBBS/BDS/AYUSH | 2024 | **70** | MCC (mcc.nic.in), Dr. YSRUHS (AP), KNRUHS (TG), AACCC (AYUSH) |
+| **Total Verified Government Records** | — | — | **2,888** | **Zero synthetic or hallucinated cutoffs** |
 
 ---
 
@@ -153,7 +171,10 @@ python scripts/test_admission_logic.py
 # 3. JEE Main JoSAA NIT test suite (31 NITs, 50:50 HS/OS quotas, choice ordering)
 npx tsx scripts/test_jee_counselling_logic.ts
 
-# 4. Production build validation (static generator + Vite + esbuild bundle)
+# 4. NEET UG medical counselling test suite (MCC, YSRUHS, KNRUHS, AACCC, PCB eligibility)
+npx tsx scripts/test_neet_counselling_logic.ts
+
+# 5. Production build validation (static generator + Vite + esbuild bundle)
 npm run build
 ```
 
@@ -168,14 +189,48 @@ CounselorPro/
 │       ├── AP_EAPCET_MPC_2025.json
 │       ├── AP_EAPCET_BIPC_2024.json
 │       ├── TS_EAMCET_MPC_2025.json
-│       └── TS_EAMCET_BIPC_2025.json
+│       ├── TS_EAMCET_BIPC_2025.json
+│       └── NEET_UG_2024_2025.json
 ├── scripts/
 │   ├── audit_datasets.py           # Integrity checker for cutoff datasets
 │   ├── generate-static-data.ts     # Static pre-bundle dataset validator
 │   ├── test_admission_logic.py     # State admission rule unit tests
-│   └── test_jee_counselling_logic.ts # JoSAA NIT counselling unit tests
+│   ├── test_jee_counselling_logic.ts # JoSAA NIT counselling unit tests
+│   └── test_neet_counselling_logic.ts # NEET UG medical counselling unit tests
 ├── src/
 │   ├── components/
+│   │   ├── LandingPage.tsx         # Responsive hero & features introduction
+│   │   ├── ExamSelector.tsx        # Exam & stream selector with layout animations
+│   │   ├── ProfileForm.tsx         # AP / TG candidate profile configuration
+│   │   ├── OptionEntry.tsx         # Two-panel choice-filling workspace & comparison hub
+│   │   ├── FinalReview.tsx         # Option review, 1.2s scanner, and mock allotment reveal
+│   │   ├── SuccessScreen.tsx       # Completion screen with summary & slip exports
+│   │   ├── jee/
+│   │   │   ├── JeeProfileForm.tsx  # Class XII State Code of Eligibility profile
+│   │   │   ├── JeeOptionEntry.tsx  # 31 NIT choice filling with HS/OS badges
+│   │   │   ├── JeeReviewLock.tsx   # Practice choice locking & locked PDF download
+│   │   │   └── JeeLearningCentre.tsx # Freeze, Float & Slide educational modal
+│   │   ├── neet/
+│   │   │   ├── NeetProfileForm.tsx # NEET AIR, score, category & PCB eligibility
+│   │   │   ├── NeetOptionEntry.tsx # Multi-authority (MCC, State, AACCC) choice filling
+│   │   │   ├── NeetReviewLock.tsx  # NEET mock allotment scanner & practice locking
+│   │   │   └── NeetLearningCentre.tsx # MCC, YSRUHS, KNRUHS & AACCC rules guide
+│   │   └── ui/
+│   │       ├── MotionButton.tsx    # Tactile spring button with shimmer & ripple
+│   │       ├── Confetti.tsx        # Zero-dependency canvas celebratory confetti
+│   │       ├── MockAllotmentScanner.tsx # 1.2s rank-matching animated scanner
+│   │       └── ProbabilityBadge.tsx # Soft scale admission chance badge with tooltip
+│   ├── data/
+│   │   ├── colleges.ts             # State colleges data loader & probability math
+│   │   ├── jeeNitCatalog.ts        # 31 NITs catalogue & 50:50 quota determination
+│   │   └── neetCatalog.ts          # 70 verified NEET medical & AYUSH records
+│   ├── types.ts                    # TypeScript interface definitions
+│   ├── App.tsx                     # Top-level wizard controller & state persistence
+│   └── index.css                   # Tailwind CSS v4 & custom keyframes
+├── server.ts                       # Production Express SSR / asset server
+├── vite.config.ts                  # Vite build configuration
+└── package.json
+```
 │   │   ├── LandingPage.tsx         # Responsive hero & features introduction
 │   │   ├── ExamSelector.tsx        # Exam & stream selector with layout animations
 │   │   ├── ProfileForm.tsx         # AP / TG candidate profile configuration

@@ -6,7 +6,9 @@ import { getFirestoreDb, firestoreUnavailable, setFirestoreUnavailable } from ".
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed. Use GET." });
   const datasetId = String(req.query.datasetId || "");
-  if (!/^(AP_EAPCET|TS_EAMCET)_(MPC|BIPC)_\d{4}$/.test(datasetId)) return res.status(400).json({ error: "Provide a valid exam_stream_year datasetId." });
+  if (!/^(AP_EAPCET|TS_EAMCET)_(MPC|BIPC)_\d{4}$/.test(datasetId) && !/^NEET_UG_\d{4}(_\d{4})?(_VERIFIED)?$/.test(datasetId)) {
+    return res.status(400).json({ error: "Provide a valid exam_stream_year datasetId (e.g. AP_EAPCET_MPC_2025 or NEET_UG_2024_2025)." });
+  }
   try {
     const db = getFirestoreDb();
     if (db && !firestoreUnavailable) {
@@ -25,7 +27,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const filePath = path.join(process.cwd(), "public", "data", `${datasetId}.json`);
     if (fs.existsSync(filePath)) {
       const payload = JSON.parse(fs.readFileSync(filePath, "utf8"));
-      if (payload?.metadata?.datasetId === datasetId && Array.isArray(payload.colleges)) return res.json({ ...payload, source: "Versioned static dataset" });
+      const records = payload.records || payload.colleges;
+      if (Array.isArray(records)) {
+        return res.json({ 
+          metadata: payload.metadata || payload, 
+          colleges: records, 
+          source: "Versioned static dataset" 
+        });
+      }
     }
     return res.status(404).json({ error: `No verified dataset is available for ${datasetId}.` });
   } catch (error: any) {

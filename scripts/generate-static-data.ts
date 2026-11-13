@@ -8,6 +8,14 @@ export function generateStaticData() {
   const files = fs.readdirSync(directory).filter(file => file.endsWith(".json"));
   for (const file of files) {
     const payload = JSON.parse(fs.readFileSync(path.join(directory, file), "utf8"));
+    if (payload?.metadata?.exam === 'NEET_UG' || file.startsWith('NEET_UG')) {
+      const records = payload.records || payload.colleges;
+      if (!Array.isArray(records) || records.length === 0) {
+        throw new Error(`Invalid NEET dataset in ${file}; expected non-empty records or colleges array.`);
+      }
+      console.log(`Validated ${file}: ${records.length} NEET UG medical & AYUSH course records (${payload.metadata?.year || 2024}).`);
+      continue;
+    }
     if (!payload?.metadata || !Array.isArray(payload.colleges)) {
       throw new Error(`Invalid legacy/unverified dataset ${file}; expected a versioned metadata + colleges document.`);
     }
