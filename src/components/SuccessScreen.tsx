@@ -115,7 +115,9 @@ export default function SuccessScreen({ profile, selectedOptions, optionsLength,
 
   // Download a local practice summary without the student's hall-ticket identifier.
   const handleDownloadRegisteredSummary = () => {
-    const area = hasLocalAreaCutoffs() ? `Local area: ${profile.region}` : 'Local-area cutoff split: not reported in source';
+    const area = profile.exam === 'TS_EAMCET'
+      ? `Telangana Eligibility: ${profile.region === 'NON_LOCAL' ? '15% Unreserved Quota (G.O.Ms. 15)' : 'OU Local (85% Local Quota)'}`
+      : `AP Local Area: ${profile.region === 'NON_LOCAL' ? '15% Statewide Unreserved Pool' : `${profile.region} Local Area`}`;
     const fileContent = `COUNSELORPRO PRACTICE OPTIONS SUMMARY\nPRACTICE COPY ONLY - NOT AN OFFICIAL ALLOTMENT\nExam: ${profile.exam} (${profile.stream})\nRank: ${profile.rank}\nCategory: ${profile.category}\n${area}\nGender: ${profile.gender}\nOptions: ${optionsLength}\nGenerated: ${new Date().toLocaleDateString()}\n\nHistorical cutoff comparisons do not guarantee a future seat.`;
     
     const element = document.createElement("a");

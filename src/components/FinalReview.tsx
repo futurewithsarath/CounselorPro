@@ -54,7 +54,9 @@ export default function FinalReview({ profile, selectedOptions, onBack, onFinish
 
   // Printable registered list PDF simulation action
   const handleDownloadSlip = () => {
-    const area = hasLocalAreaCutoffs() ? ` (${profile.region})` : ' (local area not split in source)';
+    const area = profile.exam === 'TS_EAMCET'
+      ? ` (Telangana ${profile.region === 'NON_LOCAL' ? '15% Unreserved Quota' : 'OU Local Quota'})`
+      : ` (${profile.region === 'NON_LOCAL' ? 'AP 15% Unreserved Quota' : `${profile.region} Local Area`})`;
     const header = `=== COUNSELORPRO PRACTICE OPTIONS LIST ===\nEXAM: ${profile.exam} (${profile.stream})\nRANK: ${profile.rank}\nCATEGORY: ${profile.category}${area}\nGENDER: ${profile.gender}\nGENERATED: ${new Date().toLocaleDateString()}\nPRACTICE COPY ONLY - NOT SUBMITTED TO AN ADMISSIONS AUTHORITY\n\n`;
     const choices = selectedOptions
       .map(o => `Option #${o.priority}: [${o.collegeCode}] ${o.collegeName} - Branch: ${o.branchName || o.branch} (${o.branch})${o.fee === null ? '' : ` (Fee: ₹${o.fee.toLocaleString()}/yr)`}`)
@@ -334,8 +336,10 @@ export default function FinalReview({ profile, selectedOptions, onBack, onFinish
                 <span className="font-bold text-slate-800">{profile.rank?.toLocaleString()}</span>
               </div>
               <div>
-                <span className="text-slate-400 block uppercase text-[9px]">{hasLocalAreaCutoffs() ? 'Category / Local Area' : 'Category'}</span>
-                <span className="font-bold text-slate-800">{profile.category}{hasLocalAreaCutoffs() ? ` (${profile.region})` : ''}</span>
+                <span className="text-slate-400 block uppercase text-[9px]">Category & Eligibility Quota</span>
+                <span className="font-bold text-slate-800">
+                  {profile.category} • {profile.exam === 'TS_EAMCET' ? (profile.region === 'NON_LOCAL' ? '15% Unreserved' : 'OU Local (85%)') : (profile.region === 'NON_LOCAL' ? '15% Unreserved' : `${profile.region} Local Area`)}
+                </span>
               </div>
               <div>
                 <span className="text-slate-400 block uppercase text-[9px]">Practice Date</span>

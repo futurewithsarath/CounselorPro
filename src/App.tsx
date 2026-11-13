@@ -246,12 +246,21 @@ export default function App() {
   // Safe callback updates
   const handleSelectExam = useCallback((exam: ExamType) => {
     if (profile.exam !== exam) setSelectedOptions([]);
-    setProfile(prev => ({
-      ...prev,
-      exam,
-      // Default local region to OU if Telangana, or AU if Andhra Pradesh
-      region: exam === 'TS_EAMCET' ? 'OU' : 'AU'
-    }));
+    setProfile(prev => {
+      let category = prev.category;
+      if (exam === 'AP_EAPCET' && prev.stream === 'BiPC' && ['SC-I', 'SC-II', 'SC-III'].includes(category)) {
+        category = 'SC';
+      } else if ((exam === 'TS_EAMCET' || prev.stream === 'MPC') && category === 'SC') {
+        category = 'SC-I';
+      }
+      return {
+        ...prev,
+        exam,
+        category,
+        // Strictly assign exam-appropriate local area
+        region: exam === 'TS_EAMCET' ? 'OU' : 'AU'
+      };
+    });
   }, [profile.exam]);
 
   return (

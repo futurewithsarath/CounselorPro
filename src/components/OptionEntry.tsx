@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { College, StudentProfile, WebOption } from '../types';
-import { getCollegeCutoff, getSeatProbability, getCollegesForStream, isCollegeAvailableToGender, hasLocalAreaCutoffs, COLLEGES_DATASET_METADATA, COLLEGES_SOURCE_YEAR } from '../data/colleges';
+import { getCollegeCutoff, getSeatProbability, getCollegesForStream, isCollegeAvailableToGender, hasLocalAreaCutoffs, COLLEGES_DATASET_METADATA, COLLEGES_SOURCE_YEAR, PROBABILITY_CONFIG } from '../data/colleges';
 import { Search, Filter, Plus, Trash2, ArrowUp, ArrowDown, ListOrdered, GraduationCap, DollarSign, RefreshCw, AlertCircle, CheckCircle2, ArrowLeftRight, GripVertical } from 'lucide-react';
 
 interface OptionEntryProps {
@@ -363,18 +363,18 @@ export default function OptionEntry({ profile, selectedOptions, onUpdateOptions,
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Historical Cutoff Match</label>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Historical Chance</label>
                   <select
                     value={selectedProb}
                     onChange={(e) => setSelectedProb(e.target.value)}
                     className="w-full text-xs px-2.5 py-1.5 border border-slate-300 rounded bg-white"
                   >
-                    <option value="ALL">All Probabilities</option>
-                    <option value="HIGH">Rank comfortably within cutoff</option>
-                    <option value="MEDIUM">Rank near cutoff</option>
-                    <option value="LOW">Rank slightly beyond cutoff</option>
-                    <option value="VERY_LOW">Rank beyond cutoff</option>
-                    <option value="NO_DATA">No cutoff reported</option>
+                    <option value="ALL">All Chances</option>
+                    <option value="HIGH">High Chance (Within cutoff)</option>
+                    <option value="MODERATE">Moderate Chance (Near cutoff)</option>
+                    <option value="REACH">Reach / Competitive (Slightly beyond)</option>
+                    <option value="LOW">Low Chance (Far beyond cutoff)</option>
+                    <option value="NO_DATA">No Historical Cutoff Data</option>
                   </select>
                 </div>
               </div>
@@ -402,14 +402,7 @@ export default function OptionEntry({ profile, selectedOptions, onUpdateOptions,
                     (opt.collegeCode.toLowerCase() === col.code.toLowerCase() && opt.branch.toLowerCase() === col.branch.toLowerCase())
                   );
                   const prob = getSeatProbability(col, profile.rank, profile.category, profile.gender, profile.region);
-                  
-                  const probLabel = {
-                    HIGH: { text: "WITHIN CUTOFF", color: "text-emerald-700 bg-emerald-50 border-emerald-200" },
-                    MEDIUM: { text: "NEAR CUTOFF", color: "text-teal-700 bg-teal-50 border-teal-200" },
-                    LOW: { text: "SLIGHTLY BEYOND", color: "text-amber-700 bg-amber-50 border-amber-200" },
-                    VERY_LOW: { text: "BEYOND CUTOFF", color: "text-red-700 bg-red-50 border-red-200" },
-                    NO_DATA: { text: "NO CUTOFF", color: "text-slate-600 bg-slate-100 border-slate-200" }
-                  }[prob];
+                  const probMeta = PROBABILITY_CONFIG[prob] || PROBABILITY_CONFIG.NO_DATA;
 
                   return (
                     <div 
@@ -426,8 +419,8 @@ export default function OptionEntry({ profile, selectedOptions, onUpdateOptions,
                           <span className="font-mono text-[10px] font-semibold text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded">
                             {col.branchName || col.branch}
                           </span>
-                          <span className={`font-mono text-[9px] font-extrabold px-1.5 py-0.5 rounded border ${probLabel.color}`}>
-                            {probLabel.text}
+                          <span className={`font-mono text-[9px] font-extrabold px-1.5 py-0.5 rounded border ${probMeta.color}`} title={probMeta.description}>
+                            {probMeta.badgeLabel}
                           </span>
                         </div>
                         <h4 className="font-sans font-bold text-xs text-slate-900 line-clamp-1">{col.name}</h4>

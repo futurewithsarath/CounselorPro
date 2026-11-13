@@ -1,4 +1,6 @@
-import { CategoryCutoffs, College, CollegeDatasetMetadata, CutoffCategory, ExamType, LocalArea, ReservationCategory } from '../types';
+import { CategoryCutoffs, College, CollegeDatasetMetadata, CutoffCategory, ExamType, LocalArea, ReservationCategory, SeatProbability } from '../types';
+
+export type { SeatProbability };
 
 export let COLLEGES_DB: College[] = [];
 export let COLLEGES_SOURCE = 'No verified dataset loaded';
@@ -161,21 +163,71 @@ function getCutoffCategory(category: ReservationCategory): CutoffCategory | null
   return category.replace('-', '_') as CutoffCategory;
 }
 
+export interface ProbabilityMeta {
+  tier: SeatProbability;
+  label: string;
+  badgeLabel: string;
+  color: string;
+  description: string;
+}
+
+export const PROBABILITY_CONFIG: Record<SeatProbability, ProbabilityMeta> = {
+  HIGH: {
+    tier: 'HIGH',
+    label: 'High Chance',
+    badgeLabel: 'HIGH CHANCE',
+    color: 'text-emerald-700 bg-emerald-50 border-emerald-200',
+    description: 'Your rank is comfortably within historical cutoffs.'
+  },
+  MODERATE: {
+    tier: 'MODERATE',
+    label: 'Moderate Chance',
+    badgeLabel: 'MODERATE CHANCE',
+    color: 'text-teal-700 bg-teal-50 border-teal-200',
+    description: 'Your rank is close to the historical closing cutoff.'
+  },
+  REACH: {
+    tier: 'REACH',
+    label: 'Reach / Competitive',
+    badgeLabel: 'REACH / COMPETITIVE',
+    color: 'text-amber-700 bg-amber-50 border-amber-200',
+    description: 'Competitive option; your rank is slightly beyond historical cutoffs.'
+  },
+  LOW: {
+    tier: 'LOW',
+    label: 'Low Chance',
+    badgeLabel: 'LOW CHANCE',
+    color: 'text-rose-700 bg-rose-50 border-rose-200',
+    description: 'Historically closed at a significantly better rank.'
+  },
+  NO_DATA: {
+    tier: 'NO_DATA',
+    label: 'No Historical Data',
+    badgeLabel: 'NO HISTORICAL DATA',
+    color: 'text-slate-600 bg-slate-100 border-slate-200',
+    description: 'No historical closing rank was published for this category, gender, and regional eligibility.'
+  }
+};
+
 export function getCollegeCutoff(
   college: College,
   category: ReservationCategory | string,
   gender: 'Male' | 'Female' = 'Male',
   localArea: LocalArea = 'AU',
 ): number | null {
+  if (!isCollegeAvailableToGender(college, gender)) {
+    return null;
+  }
+
   const cutoffCategory = getCutoffCategory(category as ReservationCategory);
   if (cutoffCategory) {
     const categoryCutoff = college.cutoffsByLocalArea?.[localArea]?.[cutoffCategory]
       ?? college.cutoffsByCategory?.[cutoffCategory];
     if (categoryCutoff) {
-    const eligibleRanks = gender === 'Female'
-      ? [categoryCutoff.Girls, categoryCutoff.Boys].filter((value): value is number => value !== null && value !== undefined)
-      : [categoryCutoff.Boys].filter((value): value is number => value !== null && value !== undefined);
-    return eligibleRanks.length ? Math.max(...eligibleRanks) : null;
+      const eligibleRanks = gender === 'Female'
+        ? [categoryCutoff.Girls, categoryCutoff.Boys].filter((value): value is number => value !== null && value !== undefined)
+        : [categoryCutoff.Boys].filter((value): value is number => value !== null && value !== undefined);
+      return eligibleRanks.length ? Math.max(...eligibleRanks) : null;
     }
   }
 
@@ -199,8 +251,6 @@ export function getEligibleCutoff(
   return eligibleRanks.length ? Math.max(...eligibleRanks) : null;
 }
 
-export type SeatProbability = 'HIGH' | 'MEDIUM' | 'LOW' | 'VERY_LOW' | 'NO_DATA';
-
 export function getSeatProbability(
   college: College,
   rank: number,
@@ -209,11 +259,11 @@ export function getSeatProbability(
   localArea: LocalArea = 'AU',
 ): SeatProbability {
   const cutoff = getEligibleCutoff(college, category, gender, localArea);
-  if (cutoff === null) return 'NO_DATA';
-  if (rank <= cutoff * 0.8) return 'HIGH';
-  if (rank <= cutoff * 1.2) return 'MEDIUM';
-  if (rank <= cutoff * 1.8) return 'LOW';
-  return 'VERY_LOW';
+  if (cutoff === null || cutoff <= 0) return 'NO_DATA';
+  if (rank <= cutoff * 0.85) return 'HIGH';
+  if (rank <= cutoff * 1.05) return 'MODERATE';
+  if (rank <= cutoff * 1.25) return 'REACH';
+  return 'LOW';
 }
 
 export function getCollegesForStream(stream: 'MPC' | 'BiPC'): College[] {

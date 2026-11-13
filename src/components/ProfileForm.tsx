@@ -67,6 +67,13 @@ export default function ProfileForm({ exam, profile, onChange, onNext, onBack }:
     } else if (!isTripartiteSC && ['SC-I', 'SC-II', 'SC-III'].includes(profile.category)) {
       tempErrors.category = 'This source reports one SC category. Select SC.';
     }
+
+    if (exam === 'AP_EAPCET' && !['AU', 'SVU', 'NON_LOCAL'].includes(profile.region)) {
+      tempErrors.region = 'Select a valid AP Local University Region (AU, SVU, or Non-Local).';
+    } else if (exam === 'TS_EAMCET' && !['OU', 'NON_LOCAL'].includes(profile.region)) {
+      tempErrors.region = 'Select a valid Telangana eligibility status (OU Local or Non-Local).';
+    }
+
     setErrors(tempErrors);
     return Object.keys(tempErrors).length === 0;
   };
@@ -162,10 +169,12 @@ export default function ProfileForm({ exam, profile, onChange, onNext, onBack }:
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {/* Gender Selector */}
           <div className="space-y-1.5">
-            <label className="block text-sm font-semibold text-slate-700">Gender</label>
+            <label htmlFor="gender-select" className="block text-sm font-semibold text-slate-800">
+              Candidate Gender
+            </label>
             <select
               value={profile.gender}
               onChange={(e) => onChange({ ...profile, gender: e.target.value as 'Male' | 'Female' })}
@@ -175,16 +184,23 @@ export default function ProfileForm({ exam, profile, onChange, onNext, onBack }:
               <option value="Male">Male</option>
               <option value="Female">Female</option>
             </select>
+            <p className="text-[11px] text-slate-400">
+              Girls are also eligible for Boys/General seats.
+            </p>
           </div>
 
           {/* Reservation Category */}
           <div className="space-y-1.5">
-            <label className="block text-sm font-semibold text-slate-700">Category</label>
+            <label htmlFor="category-select" className="block text-sm font-semibold text-slate-800">
+              Social Category
+            </label>
             <select
               value={profile.category}
               onChange={(e) => onChange({ ...profile, category: e.target.value as any })}
               id="category-select"
-              className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 bg-white text-sm"
+              className={`w-full px-4 py-2.5 rounded-lg border focus:outline-none focus:ring-2 text-sm bg-white ${
+                errors.category ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-300 focus:ring-emerald-600/20 focus:border-emerald-600'
+              }`}
             >
               <option value="OC">OC (Open Competition)</option>
               <option value="BC-A">BC-A (Backward Class A)</option>
@@ -196,41 +212,60 @@ export default function ProfileForm({ exam, profile, onChange, onNext, onBack }:
                 <option value="SC">SC (Scheduled Caste)</option>
               ) : (
                 <>
-                  {profile.category === 'SC' && <option value="SC" disabled>SC (choose your certificate subcategory)</option>}
-                  <option value="SC-I">SC-I</option>
-                  <option value="SC-II">SC-II</option>
-                  <option value="SC-III">SC-III</option>
+                  {profile.category === 'SC' && <option value="SC" disabled>SC (Choose certificate subcategory)</option>}
+                  <option value="SC-I">SC-I (Scheduled Caste Tier I)</option>
+                  <option value="SC-II">SC-II (Scheduled Caste Tier II)</option>
+                  <option value="SC-III">SC-III (Scheduled Caste Tier III)</option>
                 </>
               )}
               <option value="ST">ST (Scheduled Tribe)</option>
-              <option value="EWS">EWS (OC-EWS)</option>
+              <option value="EWS">EWS (Economically Weaker Section)</option>
             </select>
-            {errors.category && <p className="text-red-600 text-xs font-semibold">{errors.category}</p>}
+            {errors.category ? (
+              <p className="text-red-600 text-[11px] font-semibold">{errors.category}</p>
+            ) : (
+              <p className="text-[11px] text-slate-400">
+                Matches official reservation cutoffs.
+              </p>
+            )}
           </div>
 
-          {/* Local University Region */}
-          {hasLocalAreaCutoffs(exam) ? <div className="space-y-1.5">
-            <label className="block text-sm font-semibold text-slate-700">
-              Local University Region
+          {/* Local Area / Quota Eligibility Selector (Strictly Exam-Specific) */}
+          <div className="space-y-1.5">
+            <label htmlFor="region-select" className="block text-sm font-semibold text-slate-800">
+              {exam === 'AP_EAPCET' ? 'Local Region (Article 371-D)' : 'Telangana Quota (G.O.Ms. 15)'}
             </label>
             <select
               value={profile.region}
               onChange={(e) => onChange({ ...profile, region: e.target.value as any })}
               id="region-select"
-              className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-600/20 focus:border-emerald-600 bg-white text-sm"
+              className={`w-full px-4 py-2.5 rounded-lg border focus:outline-none focus:ring-2 text-sm bg-white ${
+                errors.region ? 'border-red-500 focus:ring-red-500/20' : 'border-slate-300 focus:ring-emerald-600/20 focus:border-emerald-600'
+              }`}
             >
               {exam === 'AP_EAPCET' ? (
                 <>
-                  <option value="AU">AU (Andhra University Region)</option>
-                  <option value="SVU">SVU (Sri Venkateswara University Region)</option>
+                  <option value="AU">AU — Andhra University Area (Coastal AP)</option>
+                  <option value="SVU">SVU — Sri Venkateswara Area (Rayalaseema & Nellore)</option>
+                  <option value="NON_LOCAL">Non-Local (15% Statewide Unreserved Pool)</option>
                 </>
               ) : (
-                <option value="OU">OU (Osmania University Region)</option>
+                <>
+                  <option value="OU">OU — Telangana Local (85% Local Quota)</option>
+                  <option value="NON_LOCAL">Non-Local / 15% Unreserved (G.O.Ms. 15 Rules)</option>
+                </>
               )}
             </select>
-          </div> : <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 self-end">
-            This historical source does not separate cutoff ranks by local area.
-          </div>}
+            {errors.region ? (
+              <p className="text-red-600 text-[11px] font-semibold">{errors.region}</p>
+            ) : (
+              <p className="text-[11px] text-slate-400">
+                {exam === 'AP_EAPCET'
+                  ? '85% reserved for local area; 15% open statewide.'
+                  : '85% convener seats reserved for Telangana OU local candidates.'}
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Dynamic Rank Guidance Panel */}
@@ -244,18 +279,26 @@ export default function ProfileForm({ exam, profile, onChange, onNext, onBack }:
           </div>
         )}
 
-        {/* Reservation quota notice */}
-        <div className="p-4 bg-amber-50/50 border border-amber-100 rounded-xl flex gap-3 text-xs text-amber-800">
-          <HelpCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-          <div className="space-y-1 leading-relaxed">
-            <span className="font-bold block">How Reservation Categories Affect Your Allotment</span>
-            <p>
-              {exam === 'TS_EAMCET'
-                ? 'The official TG EAPCET 2025 first-phase source separates SC-I, SC-II, and SC-III and reports cutoffs by gender without a local-area split. Girls are eligible for boys seats.'
-                : profile.stream === 'MPC'
-                  ? 'The AP EAPCET 2025 MPC source separates SC-I, SC-II, and SC-III. For girls, the simulator also checks the boys cutoff because girls are eligible for boys seats.'
-                  : 'The AP EAPCET 2024 BiPC source reports one SC category and includes annual fees. For girls, the simulator also checks the boys cutoff because girls are eligible for boys seats.'}
-            </p>
+        {/* Official Reservation & Counselling Guidelines Card */}
+        <div className="p-4 bg-emerald-50/60 border border-emerald-100 rounded-xl flex gap-3 text-xs text-slate-700">
+          <HelpCircle className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+          <div className="space-y-1.5 leading-relaxed">
+            <span className="font-bold text-slate-900 block text-xs">
+              Official Counselling Reservation Guidelines
+            </span>
+            {exam === 'TS_EAMCET' ? (
+              <p>
+                <strong>Telangana TG EAPCET (G.O.Ms.No. 15):</strong> 85% of convener seats in university and affiliated colleges are reserved for local candidates of the Osmania University (OU) area. The 15% unreserved seats require 10-year candidate/parent residency or parent employment in Telangana. Cutoffs are reported across OC, BC (A–E), SC (I–III), ST, and EWS without local-area sub-columns. Female candidates are eligible for both Girls and Boys/General seats.
+              </p>
+            ) : profile.stream === 'MPC' ? (
+              <p>
+                <strong>Andhra Pradesh AP EAPCET MPC:</strong> Governed by the Presidential Order (Article 371-D), dividing the state into Andhra University (AU) and Sri Venkateswara University (SVU) local areas. 85% of institutional seats are reserved for home local candidates, with 15% unreserved. SC reservations follow the three subcategories (SC-I, SC-II, SC-III). Female candidates are eligible for Boys/General seats.
+              </p>
+            ) : (
+              <p>
+                <strong>Andhra Pradesh AP EAPCET BiPC:</strong> Governed by Article 371-D across AU and SVU regions. Official BiPC reports a single unified SC cutoff and includes official tuition fee details. Female candidates are eligible for both Girls and Boys/General seats.
+              </p>
+            )}
           </div>
         </div>
       </div>

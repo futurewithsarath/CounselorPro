@@ -97,7 +97,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Prakasam"
     },
     {
       "id": "ap-eapcet-2024-acps-pdb-au",
@@ -158,7 +159,8 @@
             "Girls": 9768
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-acps-phb-au",
@@ -219,7 +221,8 @@
             "Girls": 23956
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-adcp-pdb-au",
@@ -280,7 +283,8 @@
             "Girls": 26424
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-adcp-phb-au",
@@ -341,7 +345,8 @@
             "Girls": 59619
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-aips-phb-sw",
@@ -441,7 +446,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Chittoor"
     },
     {
       "id": "ap-eapcet-2024-akntsf-phb-au",
@@ -502,7 +508,8 @@
             "Girls": 29869
           }
         }
-      }
+      },
+      "district": "West Godavari"
     },
     {
       "id": "ap-eapcet-2024-akrp-phb-au",
@@ -563,7 +570,8 @@
             "Girls": 46832
           }
         }
-      }
+      },
+      "district": "West Godavari"
     },
     {
       "id": "ap-eapcet-2024-amrn-aeb-au",
@@ -624,7 +632,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-ancp-pdb-svu",
@@ -685,7 +694,8 @@
             "Girls": 16389
           }
         }
-      }
+      },
+      "district": "Kadapa"
     },
     {
       "id": "ap-eapcet-2024-ancp-phb-svu",
@@ -746,7 +756,8 @@
             "Girls": 45138
           }
         }
-      }
+      },
+      "district": "Kadapa"
     },
     {
       "id": "ap-eapcet-2024-annp-phb-au",
@@ -807,7 +818,8 @@
             "Girls": 49158
           }
         }
-      }
+      },
+      "district": "Prakasam"
     },
     {
       "id": "ap-eapcet-2024-anupsf-phb-au",
@@ -868,7 +880,8 @@
             "Girls": 19796
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-apcs-pdb-au",
@@ -929,7 +942,8 @@
             "Girls": 9353
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-apcs-phb-au",
@@ -990,7 +1004,8 @@
             "Girls": 24537
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-arcp-phb-au",
@@ -1051,7 +1066,8 @@
             "Girls": 45901
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-armn-pdb-au",
@@ -1112,7 +1128,8 @@
             "Girls": 32208
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-armn-phb-au",
@@ -1173,7 +1190,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-asnt-pdb-au",
@@ -1234,7 +1252,8 @@
             "Girls": 25690
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-asnt-phb-au",
@@ -1295,7 +1314,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-auce-btb-au",
@@ -1356,7 +1376,8 @@
             "Girls": 7595
           }
         }
-      }
+      },
+      "district": "Visakhapatnam"
     },
     {
       "id": "ap-eapcet-2024-aucp-phb-au",
@@ -1417,7 +1438,8 @@
             "Girls": 7294
           }
         }
-      }
+      },
+      "district": "Visakhapatnam"
     },
     {
       "id": "ap-eapcet-2024-aucpsf-pdb-au",
@@ -1478,7 +1500,8 @@
             "Girls": 4999
           }
         }
-      }
+      },
+      "district": "Visakhapatnam"
     },
     {
       "id": "ap-eapcet-2024-audi-phb-svu",
@@ -1539,7 +1562,8 @@
             "Girls": 51207
           }
         }
-      }
+      },
+      "district": "Nellore"
     },
     {
       "id": "ap-eapcet-2024-avnp-pdb-au",
@@ -1600,7 +1624,8 @@
             "Girls": 23228
           }
         }
-      }
+      },
+      "district": "Vizianagaram"
     },
     {
       "id": "ap-eapcet-2024-avnp-phb-au",
@@ -1661,7 +1686,8 @@
             "Girls": 49358
           }
         }
-      }
+      },
+      "district": "Vizianagaram"
     },
     {
       "id": "ap-eapcet-2024-bakr-phb-au",
@@ -1722,7 +1748,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Prakasam"
     },
     {
       "id": "ap-eapcet-2024-bala-pdb-svu",
@@ -1783,7 +1810,8 @@
             "Girls": 23841
           }
         }
-      }
+      },
+      "district": "Anantapur"
     },
     {
       "id": "ap-eapcet-2024-bala-phb-svu",
@@ -1844,7 +1872,8 @@
             "Girls": 46194
           }
         }
-      }
+      },
+      "district": "Anantapur"
     },
     {
       "id": "ap-eapcet-2024-bcop-pdb-au",
@@ -1905,7 +1934,8 @@
             "Girls": 18014
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-bcop-phb-au",
@@ -1966,7 +1996,8 @@
             "Girls": 47038
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-bipb-phb-au",
@@ -2027,7 +2058,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Vizianagaram"
     },
     {
       "id": "ap-eapcet-2024-blmp-phb-au",
@@ -2088,7 +2120,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Prakasam"
     },
     {
       "id": "ap-eapcet-2024-cabp-aeb-sw",
@@ -2149,7 +2182,8 @@
             "Girls": 21050
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-cams-aeb-sw",
@@ -2210,7 +2244,8 @@
             "Girls": 12820
           }
         }
-      }
+      },
+      "district": "Anantapur"
     },
     {
       "id": "ap-eapcet-2024-ccpm-phb-au",
@@ -2271,7 +2306,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Prakasam"
     },
     {
       "id": "ap-eapcet-2024-ccpy-phb-au",
@@ -2332,7 +2368,8 @@
             "Girls": 56955
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-cenupu-phb-sw",
@@ -2432,7 +2469,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Vizianagaram"
     },
     {
       "id": "ap-eapcet-2024-cips-pdb-au",
@@ -2493,7 +2531,8 @@
             "Girls": 11880
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-cips-phb-au",
@@ -2554,7 +2593,8 @@
             "Girls": 45960
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-clpt-pdb-au",
@@ -2615,7 +2655,8 @@
             "Girls": 9087
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-clpt-phb-au",
@@ -2676,7 +2717,8 @@
             "Girls": 29235
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-crkn-pdb-svu",
@@ -2737,7 +2779,8 @@
             "Girls": 26549
           }
         }
-      }
+      },
+      "district": "Kurnool"
     },
     {
       "id": "ap-eapcet-2024-crkn-phb-svu",
@@ -2798,7 +2841,8 @@
             "Girls": 57017
           }
         }
-      }
+      },
+      "district": "Kurnool"
     },
     {
       "id": "ap-eapcet-2024-crrp-pdb-au",
@@ -2859,7 +2903,8 @@
             "Girls": 15445
           }
         }
-      }
+      },
+      "district": "West Godavari"
     },
     {
       "id": "ap-eapcet-2024-crrp-phb-au",
@@ -2920,7 +2965,8 @@
             "Girls": 36357
           }
         }
-      }
+      },
+      "district": "West Godavari"
     },
     {
       "id": "ap-eapcet-2024-csnp-phb-au",
@@ -2981,7 +3027,8 @@
             "Girls": 58972
           }
         }
-      }
+      },
+      "district": "West Godavari"
     },
     {
       "id": "ap-eapcet-2024-dcrm-phb-au",
@@ -3042,7 +3089,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Prakasam"
     },
     {
       "id": "ap-eapcet-2024-ggurpu-aeb-sw",
@@ -3142,7 +3190,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-gipr-pdb-au",
@@ -3203,7 +3252,8 @@
             "Girls": 10937
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-gipr-phb-au",
@@ -3264,7 +3314,8 @@
             "Girls": 27187
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-gkps-phb-svu",
@@ -3325,7 +3376,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Nellore"
     },
     {
       "id": "ap-eapcet-2024-gokp-pdb-au",
@@ -3386,7 +3438,8 @@
             "Girls": 33600
           }
         }
-      }
+      },
+      "district": "Vizianagaram"
     },
     {
       "id": "ap-eapcet-2024-gokp-phb-au",
@@ -3447,7 +3500,8 @@
             "Girls": 49513
           }
         }
-      }
+      },
+      "district": "Vizianagaram"
     },
     {
       "id": "ap-eapcet-2024-grap-phb-au",
@@ -3508,7 +3562,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "West Godavari"
     },
     {
       "id": "ap-eapcet-2024-hicp-pdb-au",
@@ -3569,7 +3624,8 @@
             "Girls": 11875
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-hicp-phb-au",
@@ -3630,7 +3686,8 @@
             "Girls": 57998
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-iasp-pdb-au",
@@ -3691,7 +3748,8 @@
             "Girls": 23963
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-iasp-phb-au",
@@ -3752,7 +3810,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-ists-aeb-au",
@@ -3813,7 +3872,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-istsoc-aeb-au",
@@ -3874,7 +3934,8 @@
             "Girls": 49199
           }
         }
-      }
+      },
+      "district": "West Godavari"
     },
     {
       "id": "ap-eapcet-2024-jagn-pdb-svu",
@@ -3935,7 +3996,8 @@
             "Girls": 54000
           }
         }
-      }
+      },
+      "district": "Nellore"
     },
     {
       "id": "ap-eapcet-2024-jagn-phb-svu",
@@ -3996,7 +4058,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Nellore"
     },
     {
       "id": "ap-eapcet-2024-jits-phb-au",
@@ -4057,7 +4120,8 @@
             "Girls": 58876
           }
         }
-      }
+      },
+      "district": "West Godavari"
     },
     {
       "id": "ap-eapcet-2024-jnkfsf-feb-au",
@@ -4118,7 +4182,8 @@
             "Girls": 15303
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-jnkpsf-phb-au",
@@ -4179,7 +4244,8 @@
             "Girls": 13287
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-jntc-fdb-svu",
@@ -4240,7 +4306,8 @@
             "Girls": 53863
           }
         }
-      }
+      },
+      "district": "Chittoor"
     },
     {
       "id": "ap-eapcet-2024-jnyp-pdb-svu",
@@ -4301,7 +4368,8 @@
             "Girls": 45800
           }
         }
-      }
+      },
+      "district": "Kurnool"
     },
     {
       "id": "ap-eapcet-2024-jnyp-phb-svu",
@@ -4362,7 +4430,8 @@
             "Girls": 60160
           }
         }
-      }
+      },
+      "district": "Kurnool"
     },
     {
       "id": "ap-eapcet-2024-jpsn-pdb-svu",
@@ -4423,7 +4492,8 @@
             "Girls": 43100
           }
         }
-      }
+      },
+      "district": "Nellore"
     },
     {
       "id": "ap-eapcet-2024-kcpt-pdb-au",
@@ -4484,7 +4554,8 @@
             "Girls": 31716
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-kcpt-phb-au",
@@ -4545,7 +4616,8 @@
             "Girls": 59142
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-kcpw-phb-au",
@@ -4606,7 +4678,8 @@
             "Girls": 58774
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-kcrp-phb-au",
@@ -4667,7 +4740,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-kgrp-phb-au",
@@ -4728,7 +4802,8 @@
             "Girls": 43396
           }
         }
-      }
+      },
+      "district": "West Godavari"
     },
     {
       "id": "ap-eapcet-2024-kisr-aeb-au",
@@ -4789,7 +4864,8 @@
             "Girls": 59601
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-kisr-peb-au",
@@ -4850,7 +4926,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-kisr-phb-au",
@@ -4911,7 +4988,8 @@
             "Girls": 58713
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-ktpt-pdb-svu",
@@ -4972,7 +5050,8 @@
             "Girls": 49211
           }
         }
-      }
+      },
+      "district": "Chittoor"
     },
     {
       "id": "ap-eapcet-2024-ktpt-phb-svu",
@@ -5033,7 +5112,8 @@
             "Girls": 54285
           }
         }
-      }
+      },
+      "district": "Chittoor"
     },
     {
       "id": "ap-eapcet-2024-kucpsf-phb-au",
@@ -5094,7 +5174,8 @@
             "Girls": 52007
           }
         }
-      }
+      },
+      "district": "Krishna"
     },
     {
       "id": "ap-eapcet-2024-kvsp-pdb-svu",
@@ -5155,7 +5236,8 @@
             "Girls": 23271
           }
         }
-      }
+      },
+      "district": "Kurnool"
     },
     {
       "id": "ap-eapcet-2024-kvsp-phb-svu",
@@ -5216,7 +5298,8 @@
             "Girls": 51155
           }
         }
-      }
+      },
+      "district": "Kurnool"
     },
     {
       "id": "ap-eapcet-2024-lncp-phb-svu",
@@ -5277,7 +5360,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Chittoor"
     },
     {
       "id": "ap-eapcet-2024-lydp-pdb-au",
@@ -5338,7 +5422,8 @@
             "Girls": 25413
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-lydp-phb-au",
@@ -5399,7 +5484,8 @@
             "Girls": 53132
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-mamn-pdb-au",
@@ -5460,7 +5546,8 @@
             "Girls": 25595
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-mamn-phb-au",
@@ -5521,7 +5608,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-mbusps-pdb-sw",
@@ -5621,7 +5709,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Chittoor"
     },
     {
       "id": "ap-eapcet-2024-mbusps-phb-sw",
@@ -5721,7 +5810,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Chittoor"
     },
     {
       "id": "ap-eapcet-2024-mcpm-pdb-svu",
@@ -5782,7 +5872,8 @@
             "Girls": 29852
           }
         }
-      }
+      },
+      "district": "Chittoor"
     },
     {
       "id": "ap-eapcet-2024-mcpm-phb-svu",
@@ -5843,7 +5934,8 @@
             "Girls": 41299
           }
         }
-      }
+      },
+      "district": "Chittoor"
     },
     {
       "id": "ap-eapcet-2024-mhrj-phb-au",
@@ -5904,7 +5996,8 @@
             "Girls": 32190
           }
         }
-      }
+      },
+      "district": "Vizianagaram"
     },
     {
       "id": "ap-eapcet-2024-mipr-pdb-svu",
@@ -5965,7 +6058,8 @@
             "Girls": 35268
           }
         }
-      }
+      },
+      "district": "Kurnool"
     },
     {
       "id": "ap-eapcet-2024-mipr-phb-svu",
@@ -6026,7 +6120,8 @@
             "Girls": 31538
           }
         }
-      }
+      },
+      "district": "Kurnool"
     },
     {
       "id": "ap-eapcet-2024-mlcp-phb-au",
@@ -6087,7 +6182,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Prakasam"
     },
     {
       "id": "ap-eapcet-2024-mpes-phb-au",
@@ -6148,7 +6244,8 @@
             "Girls": 48170
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-mppc-phb-au",
@@ -6209,7 +6306,8 @@
             "Girls": 49862
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-mrnp-phb-au",
@@ -6270,7 +6368,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Krishna"
     },
     {
       "id": "ap-eapcet-2024-ncpv-pdb-au",
@@ -6331,7 +6430,8 @@
             "Girls": 37558
           }
         }
-      }
+      },
+      "district": "Krishna"
     },
     {
       "id": "ap-eapcet-2024-ncpv-phb-au",
@@ -6392,7 +6492,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Krishna"
     },
     {
       "id": "ap-eapcet-2024-nicp-pdb-svu",
@@ -6453,7 +6554,8 @@
             "Girls": 32260
           }
         }
-      }
+      },
+      "district": "Kadapa"
     },
     {
       "id": "ap-eapcet-2024-nicp-phb-svu",
@@ -6514,7 +6616,8 @@
             "Girls": 54474
           }
         }
-      }
+      },
+      "district": "Kadapa"
     },
     {
       "id": "ap-eapcet-2024-nkgp-phb-au",
@@ -6575,7 +6678,8 @@
             "Girls": 49371
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-novp-pdb-au",
@@ -6636,7 +6740,8 @@
             "Girls": 27360
           }
         }
-      }
+      },
+      "district": "West Godavari"
     },
     {
       "id": "ap-eapcet-2024-novp-phb-au",
@@ -6697,7 +6802,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "West Godavari"
     },
     {
       "id": "ap-eapcet-2024-nrip-pdb-au",
@@ -6758,7 +6864,8 @@
             "Girls": 16909
           }
         }
-      }
+      },
+      "district": "Krishna"
     },
     {
       "id": "ap-eapcet-2024-nrip-phb-au",
@@ -6819,7 +6926,8 @@
             "Girls": 59422
           }
         }
-      }
+      },
+      "district": "Krishna"
     },
     {
       "id": "ap-eapcet-2024-nrml-pdb-au",
@@ -6880,7 +6988,8 @@
             "Girls": 12440
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-nrml-phb-au",
@@ -6941,7 +7050,8 @@
             "Girls": 39979
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-nrnp-pdb-svu",
@@ -7002,7 +7112,8 @@
             "Girls": 17882
           }
         }
-      }
+      },
+      "district": "Nellore"
     },
     {
       "id": "ap-eapcet-2024-nrnp-phb-svu",
@@ -7063,7 +7174,8 @@
             "Girls": 36544
           }
         }
-      }
+      },
+      "district": "Nellore"
     },
     {
       "id": "ap-eapcet-2024-nspp-pdb-au",
@@ -7124,7 +7236,8 @@
             "Girls": 17422
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-nspp-phb-au",
@@ -7185,7 +7298,8 @@
             "Girls": 49748
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-otrisf-pdb-svu",
@@ -7246,7 +7360,8 @@
             "Girls": 17830
           }
         }
-      }
+      },
+      "district": "Anantapur"
     },
     {
       "id": "ap-eapcet-2024-otrisf-phb-svu",
@@ -7307,7 +7422,8 @@
             "Girls": 37379
           }
         }
-      }
+      },
+      "district": "Anantapur"
     },
     {
       "id": "ap-eapcet-2024-pbtp-phb-svu",
@@ -7368,7 +7484,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Kurnool"
     },
     {
       "id": "ap-eapcet-2024-pcpk-phb-au",
@@ -7429,7 +7546,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "West Godavari"
     },
     {
       "id": "ap-eapcet-2024-pipr-pdb-au",
@@ -7490,7 +7608,8 @@
             "Girls": 28631
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-pipr-phb-au",
@@ -7551,7 +7670,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-prmp-pdb-svu",
@@ -7612,7 +7732,8 @@
             "Girls": 21863
           }
         }
-      }
+      },
+      "district": "Kadapa"
     },
     {
       "id": "ap-eapcet-2024-prmp-phb-svu",
@@ -7673,7 +7794,8 @@
             "Girls": 48484
           }
         }
-      }
+      },
+      "district": "Kadapa"
     },
     {
       "id": "ap-eapcet-2024-pydp-pdb-au",
@@ -7734,7 +7856,8 @@
             "Girls": 22443
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-pydp-phb-au",
@@ -7795,7 +7918,8 @@
             "Girls": 44830
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-qisp-pdb-au",
@@ -7856,7 +7980,8 @@
             "Girls": 22889
           }
         }
-      }
+      },
+      "district": "Prakasam"
     },
     {
       "id": "ap-eapcet-2024-qisp-phb-au",
@@ -7917,7 +8042,8 @@
             "Girls": 58984
           }
         }
-      }
+      },
+      "district": "Prakasam"
     },
     {
       "id": "ap-eapcet-2024-raos-pdb-svu",
@@ -7978,7 +8104,8 @@
             "Girls": 38289
           }
         }
-      }
+      },
+      "district": "Nellore"
     },
     {
       "id": "ap-eapcet-2024-raos-phb-svu",
@@ -8039,7 +8166,8 @@
             "Girls": 58000
           }
         }
-      }
+      },
+      "district": "Nellore"
     },
     {
       "id": "ap-eapcet-2024-rcpv-phb-au",
@@ -8100,7 +8228,8 @@
             "Girls": 27476
           }
         }
-      }
+      },
+      "district": "Visakhapatnam"
     },
     {
       "id": "ap-eapcet-2024-resn-pdb-svu",
@@ -8161,7 +8290,8 @@
             "Girls": 26936
           }
         }
-      }
+      },
+      "district": "Nellore"
     },
     {
       "id": "ap-eapcet-2024-resn-phb-svu",
@@ -8222,7 +8352,8 @@
             "Girls": 57958
           }
         }
-      }
+      },
+      "district": "Nellore"
     },
     {
       "id": "ap-eapcet-2024-rgcp-phb-au",
@@ -8283,7 +8414,8 @@
             "Girls": 57840
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-ripa-pdb-svu",
@@ -8344,7 +8476,8 @@
             "Girls": 18148
           }
         }
-      }
+      },
+      "district": "Anantapur"
     },
     {
       "id": "ap-eapcet-2024-ripa-phb-svu",
@@ -8405,7 +8538,8 @@
             "Girls": 48062
           }
         }
-      }
+      },
+      "district": "Anantapur"
     },
     {
       "id": "ap-eapcet-2024-saip-phb-au",
@@ -8466,7 +8600,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Vizianagaram"
     },
     {
       "id": "ap-eapcet-2024-sapv-phb-au",
@@ -8527,7 +8662,8 @@
             "Girls": 57603
           }
         }
-      }
+      },
+      "district": "Vizianagaram"
     },
     {
       "id": "ap-eapcet-2024-scon-pdb-svu",
@@ -8588,7 +8724,8 @@
             "Girls": 21678
           }
         }
-      }
+      },
+      "district": "Nellore"
     },
     {
       "id": "ap-eapcet-2024-scon-phb-svu",
@@ -8649,7 +8786,8 @@
             "Girls": 41205
           }
         }
-      }
+      },
+      "district": "Nellore"
     },
     {
       "id": "ap-eapcet-2024-scpb-pdb-au",
@@ -8710,7 +8848,8 @@
             "Girls": 6906
           }
         }
-      }
+      },
+      "district": "West Godavari"
     },
     {
       "id": "ap-eapcet-2024-scpb-phb-au",
@@ -8771,7 +8910,8 @@
             "Girls": 18514
           }
         }
-      }
+      },
+      "district": "West Godavari"
     },
     {
       "id": "ap-eapcet-2024-scpn-pdb-svu",
@@ -8832,7 +8972,8 @@
             "Girls": 36635
           }
         }
-      }
+      },
+      "district": "Nellore"
     },
     {
       "id": "ap-eapcet-2024-scpn-phb-svu",
@@ -8893,7 +9034,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Nellore"
     },
     {
       "id": "ap-eapcet-2024-scpv-phb-au",
@@ -8954,7 +9096,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Vizianagaram"
     },
     {
       "id": "ap-eapcet-2024-sesp-phb-svu",
@@ -9015,7 +9158,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Chittoor"
     },
     {
       "id": "ap-eapcet-2024-sgip-phb-au",
@@ -9076,7 +9220,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Prakasam"
     },
     {
       "id": "ap-eapcet-2024-shcp-pdb-svu",
@@ -9137,7 +9282,8 @@
             "Girls": 17155
           }
         }
-      }
+      },
+      "district": "Chittoor"
     },
     {
       "id": "ap-eapcet-2024-shcp-phb-svu",
@@ -9198,7 +9344,8 @@
             "Girls": 59427
           }
         }
-      }
+      },
+      "district": "Chittoor"
     },
     {
       "id": "ap-eapcet-2024-sims-pdb-au",
@@ -9259,7 +9406,8 @@
             "Girls": 15399
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-sims-phb-au",
@@ -9320,7 +9468,8 @@
             "Girls": 57905
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-sipp-pdb-svu",
@@ -9381,7 +9530,8 @@
             "Girls": 44093
           }
         }
-      }
+      },
+      "district": "Kadapa"
     },
     {
       "id": "ap-eapcet-2024-sipp-phb-svu",
@@ -9442,7 +9592,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Kadapa"
     },
     {
       "id": "ap-eapcet-2024-sips-pdb-au",
@@ -9503,7 +9654,8 @@
             "Girls": 35775
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-sips-phb-au",
@@ -9564,7 +9716,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-skcp-phb-svu",
@@ -9625,7 +9778,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Chittoor"
     },
     {
       "id": "ap-eapcet-2024-skupsf-phb-svu",
@@ -9686,7 +9840,8 @@
             "Girls": 57546
           }
         }
-      }
+      },
+      "district": "Anantapur"
     },
     {
       "id": "ap-eapcet-2024-slvp-pdb-svu",
@@ -9747,7 +9902,8 @@
             "Girls": 45477
           }
         }
-      }
+      },
+      "district": "Kadapa"
     },
     {
       "id": "ap-eapcet-2024-slvp-phb-svu",
@@ -9808,7 +9964,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Kadapa"
     },
     {
       "id": "ap-eapcet-2024-spcn-phb-au",
@@ -9869,7 +10026,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Krishna"
     },
     {
       "id": "ap-eapcet-2024-spms-phb-sw",
@@ -9969,7 +10127,8 @@
             "Girls": 9691
           }
         }
-      }
+      },
+      "district": "Chittoor"
     },
     {
       "id": "ap-eapcet-2024-sprc-phb-svu",
@@ -10030,7 +10189,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Nellore"
     },
     {
       "id": "ap-eapcet-2024-spsp-pdb-svu",
@@ -10091,7 +10251,8 @@
             "Girls": 8856
           }
         }
-      }
+      },
+      "district": "Chittoor"
     },
     {
       "id": "ap-eapcet-2024-spsp-phb-svu",
@@ -10152,7 +10313,8 @@
             "Girls": 45599
           }
         }
-      }
+      },
+      "district": "Chittoor"
     },
     {
       "id": "ap-eapcet-2024-spsw-phb-svu",
@@ -10213,7 +10375,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Nellore"
     },
     {
       "id": "ap-eapcet-2024-srcn-pdb-svu",
@@ -10274,7 +10437,8 @@
             "Girls": 16861
           }
         }
-      }
+      },
+      "district": "Kurnool"
     },
     {
       "id": "ap-eapcet-2024-srcn-phb-svu",
@@ -10335,7 +10499,8 @@
             "Girls": 58463
           }
         }
-      }
+      },
+      "district": "Kurnool"
     },
     {
       "id": "ap-eapcet-2024-srpn-phb-svu",
@@ -10396,7 +10561,8 @@
             "Girls": 59267
           }
         }
-      }
+      },
+      "district": "Nellore"
     },
     {
       "id": "ap-eapcet-2024-srps-phb-au",
@@ -10457,7 +10623,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Prakasam"
     },
     {
       "id": "ap-eapcet-2024-srpv-pdb-au",
@@ -10518,7 +10685,8 @@
             "Girls": 13939
           }
         }
-      }
+      },
+      "district": "Visakhapatnam"
     },
     {
       "id": "ap-eapcet-2024-srpv-phb-au",
@@ -10579,7 +10747,8 @@
             "Girls": 51334
           }
         }
-      }
+      },
+      "district": "Visakhapatnam"
     },
     {
       "id": "ap-eapcet-2024-sscp-phb-au",
@@ -10640,7 +10809,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Srikakulam"
     },
     {
       "id": "ap-eapcet-2024-sunp-pdb-svu",
@@ -10701,7 +10871,8 @@
             "Girls": 42998
           }
         }
-      }
+      },
+      "district": "Nellore"
     },
     {
       "id": "ap-eapcet-2024-sunp-phb-svu",
@@ -10762,7 +10933,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Nellore"
     },
     {
       "id": "ap-eapcet-2024-svcp-pdb-svu",
@@ -10823,7 +10995,8 @@
             "Girls": 17974
           }
         }
-      }
+      },
+      "district": "Chittoor"
     },
     {
       "id": "ap-eapcet-2024-svcp-phb-svu",
@@ -10884,7 +11057,8 @@
             "Girls": 42244
           }
         }
-      }
+      },
+      "district": "Chittoor"
     },
     {
       "id": "ap-eapcet-2024-svpc-phb-svu",
@@ -10945,7 +11119,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Nellore"
     },
     {
       "id": "ap-eapcet-2024-svph-phb-svu",
@@ -11006,7 +11181,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Chittoor"
     },
     {
       "id": "ap-eapcet-2024-svpn-phb-svu",
@@ -11067,7 +11243,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Nellore"
     },
     {
       "id": "ap-eapcet-2024-svsp-phb-svu",
@@ -11128,7 +11305,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Chittoor"
     },
     {
       "id": "ap-eapcet-2024-svupsf-phb-svu",
@@ -11189,7 +11367,8 @@
             "Girls": 22386
           }
         }
-      }
+      },
+      "district": "Chittoor"
     },
     {
       "id": "ap-eapcet-2024-thri-phb-svu",
@@ -11250,7 +11429,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Kadapa"
     },
     {
       "id": "ap-eapcet-2024-vani-phb-au",
@@ -11311,7 +11491,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Krishna"
     },
     {
       "id": "ap-eapcet-2024-vbcp-pdb-au",
@@ -11372,7 +11553,8 @@
             "Girls": 22402
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-vbcp-phb-au",
@@ -11433,7 +11615,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-vcpb-phb-svu",
@@ -11494,7 +11677,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Kurnool"
     },
     {
       "id": "ap-eapcet-2024-vcpg-phb-au",
@@ -11555,7 +11739,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-vcpm-phb-au",
@@ -11616,7 +11801,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "West Godavari"
     },
     {
       "id": "ap-eapcet-2024-vctn-aeb-au",
@@ -11677,7 +11863,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Krishna"
     },
     {
       "id": "ap-eapcet-2024-vdpn-pdb-svu",
@@ -11738,7 +11925,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Nellore"
     },
     {
       "id": "ap-eapcet-2024-vdpn-phb-svu",
@@ -11799,7 +11987,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Nellore"
     },
     {
       "id": "ap-eapcet-2024-veda-pdb-au",
@@ -11860,7 +12049,8 @@
             "Girls": 46384
           }
         }
-      }
+      },
+      "district": "Prakasam"
     },
     {
       "id": "ap-eapcet-2024-veda-phb-au",
@@ -11921,7 +12111,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Prakasam"
     },
     {
       "id": "ap-eapcet-2024-vgtn-aeb-au",
@@ -11982,7 +12173,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Krishna"
     },
     {
       "id": "ap-eapcet-2024-vgtn-phb-au",
@@ -12043,7 +12235,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Krishna"
     },
     {
       "id": "ap-eapcet-2024-vicg-phb-au",
@@ -12104,7 +12297,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-viks-pdb-au",
@@ -12165,7 +12359,8 @@
             "Girls": 36693
           }
         }
-      }
+      },
+      "district": "Krishna"
     },
     {
       "id": "ap-eapcet-2024-viks-phb-au",
@@ -12226,7 +12421,8 @@
             "Girls": 44501
           }
         }
-      }
+      },
+      "district": "Krishna"
     },
     {
       "id": "ap-eapcet-2024-vipv-pdb-au",
@@ -12287,7 +12483,8 @@
             "Girls": 11163
           }
         }
-      }
+      },
+      "district": "Visakhapatnam"
     },
     {
       "id": "ap-eapcet-2024-vipv-phb-au",
@@ -12348,7 +12545,8 @@
             "Girls": 22373
           }
         }
-      }
+      },
+      "district": "Visakhapatnam"
     },
     {
       "id": "ap-eapcet-2024-vipw-pdb-au",
@@ -12409,7 +12607,8 @@
             "Girls": 16584
           }
         }
-      }
+      },
+      "district": "Krishna"
     },
     {
       "id": "ap-eapcet-2024-vipw-phb-au",
@@ -12470,7 +12669,8 @@
             "Girls": 46785
           }
         }
-      }
+      },
+      "district": "Krishna"
     },
     {
       "id": "ap-eapcet-2024-vjcp-pdb-au",
@@ -12531,7 +12731,8 @@
             "Girls": 21664
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-vjcp-phb-au",
@@ -12592,7 +12793,8 @@
             "Girls": 49485
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-vksr-pdb-au",
@@ -12653,7 +12855,8 @@
             "Girls": 17888
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-vksr-phb-au",
@@ -12714,7 +12917,8 @@
             "Girls": 53565
           }
         }
-      }
+      },
+      "district": "East Godavari"
     },
     {
       "id": "ap-eapcet-2024-vnip-pdb-au",
@@ -12775,7 +12979,8 @@
             "Girls": 17745
           }
         }
-      }
+      },
+      "district": "Visakhapatnam"
     },
     {
       "id": "ap-eapcet-2024-vnip-phb-au",
@@ -12836,7 +13041,8 @@
             "Girls": 54304
           }
         }
-      }
+      },
+      "district": "Visakhapatnam"
     },
     {
       "id": "ap-eapcet-2024-vnks-pdb-au",
@@ -12897,7 +13103,8 @@
             "Girls": 29709
           }
         }
-      }
+      },
+      "district": "Srikakulam"
     },
     {
       "id": "ap-eapcet-2024-vnks-phb-au",
@@ -12958,7 +13165,8 @@
             "Girls": 45934
           }
         }
-      }
+      },
+      "district": "Srikakulam"
     },
     {
       "id": "ap-eapcet-2024-vpcv-pdb-au",
@@ -13019,7 +13227,8 @@
             "Girls": 12157
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-vpcv-phb-au",
@@ -13080,7 +13289,8 @@
             "Girls": 32310
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-vrsp-pdb-au",
@@ -13141,7 +13351,8 @@
             "Girls": 10328
           }
         }
-      }
+      },
+      "district": "Krishna"
     },
     {
       "id": "ap-eapcet-2024-vrsp-phb-au",
@@ -13202,7 +13413,8 @@
             "Girls": 25424
           }
         }
-      }
+      },
+      "district": "Krishna"
     },
     {
       "id": "ap-eapcet-2024-vspc-phb-au",
@@ -13263,7 +13475,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Prakasam"
     },
     {
       "id": "ap-eapcet-2024-vspp-phb-svu",
@@ -13324,7 +13537,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Kadapa"
     },
     {
       "id": "ap-eapcet-2024-vsvp-phb-au",
@@ -13385,7 +13599,8 @@
             "Girls": 25899
           }
         }
-      }
+      },
+      "district": "West Godavari"
     },
     {
       "id": "ap-eapcet-2024-vvip-phb-au",
@@ -13446,7 +13661,8 @@
             "Girls": 51031
           }
         }
-      }
+      },
+      "district": "Krishna"
     },
     {
       "id": "ap-eapcet-2024-xavp-pdb-au",
@@ -13507,7 +13723,8 @@
             "Girls": 35756
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-xavp-phb-au",
@@ -13568,7 +13785,8 @@
             "Girls": null
           }
         }
-      }
+      },
+      "district": "Guntur"
     },
     {
       "id": "ap-eapcet-2024-ylmv-phb-au",
@@ -13629,7 +13847,8 @@
             "Girls": 57140
           }
         }
-      }
+      },
+      "district": "Visakhapatnam"
     }
   ]
 }

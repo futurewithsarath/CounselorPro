@@ -1,8 +1,9 @@
 export type ExamType = 'AP_EAPCET' | 'TS_EAMCET';
 export type ReservationCategory = 'OC' | 'BC-A' | 'BC-B' | 'BC-C' | 'BC-D' | 'BC-E' | 'SC' | 'SC-I' | 'SC-II' | 'SC-III' | 'ST' | 'EWS';
 export type CutoffCategory = 'OC' | 'SC' | 'SC_I' | 'SC_II' | 'SC_III' | 'ST' | 'BC_A' | 'BC_B' | 'BC_C' | 'BC_D' | 'BC_E' | 'OC_EWS';
-export type LocalArea = 'AU' | 'SVU' | 'OU';
+export type LocalArea = 'AU' | 'SVU' | 'OU' | 'NON_LOCAL';
 export type CollegeGenderEligibility = 'COED' | 'GIRLS' | 'BOYS';
+export type SeatProbability = 'HIGH' | 'MODERATE' | 'REACH' | 'LOW' | 'NO_DATA';
 
 export interface CollegeDatasetMetadata {
   datasetId: string;
@@ -39,7 +40,7 @@ export interface StudentProfile {
   rank: number;
   gender: 'Male' | 'Female';
   category: ReservationCategory;
-  region: 'AU' | 'SVU' | 'OU';
+  region: LocalArea;
 }
 
 export interface College {
