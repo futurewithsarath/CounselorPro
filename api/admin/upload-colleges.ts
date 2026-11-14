@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
 import { getAuth } from "firebase-admin/auth";
-import { getFirestoreDb, setCachedColleges, setFirestoreUnavailable } from "../_lib/index";
+import { getFirestoreDb, setFirestoreUnavailable } from "../_lib/index";
 
 const MAX_BODY_BYTES = 8 * 1024 * 1024;
 
@@ -11,8 +11,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!authorization.startsWith("Bearer ")) return res.status(401).json({ error: "Missing Firebase ID token." });
     const decoded = await getAuth().verifyIdToken(authorization.slice(7), true);
     const email = (decoded.email || "").toLowerCase();
-    const allowlist = (process.env.ADMIN_EMAILS || "").split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
-    if (!decoded.email_verified || !email || !allowlist.includes(email)) return res.status(403).json({ error: "A verified, allowlisted administrator account is required." });
+    
+    // Fail closed if ADMIN_EMAILS environment variable is missing or empty
+    const adminEmailsEnv = process.env.ADMIN_EMAILS;
+    if (!adminEmailsEnv || !adminEmailsEnv.trim()) {
+      console.error("[SECURITY] ADMIN_EMAILS environment variable is not configured. Failing closed.");
+      return res.status(403).json({ error: "Administrator allowlist is not configured on this server." });
+    }
+    const allowlist = adminEmailsEnv.split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
+    if (allowlist.length === 0 || !decoded.email_verified || !email || !allowlist.includes(email)) {
+      return res.status(403).json({ error: "A verified, allowlisted administrator account is required." });
+    }
 
     const rawBody = typeof req.body === "string" ? req.body : JSON.stringify(req.body ?? {});
     if (Buffer.byteLength(rawBody, "utf8") > MAX_BODY_BYTES) return res.status(413).json({ error: "Dataset exceeds the 8 MB upload limit." });
@@ -54,7 +63,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       staleDocs.slice(offset, offset + 400).forEach((doc: any) => batch.delete(doc.ref));
       await batch.commit();
     }
-    setCachedColleges(null);
     setFirestoreUnavailable(false);
     return res.status(200).json({ message: "Dataset synchronized.", count: records.length, datasetId: metadata.datasetId, details: `${records.length} ${metadata.stream} records for ${metadata.exam} ${metadata.year} were synchronized.` });
   } catch (error: any) {

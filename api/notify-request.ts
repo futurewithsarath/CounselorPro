@@ -1,16 +1,27 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
-import { getFirestoreDb } from "./_lib/index";
+import { getFirestoreDb, checkServerlessRateLimit, ALLOWED_EXAM_GROUPS } from "./_lib/index";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed. Use POST." });
   }
 
-  try {
-    const { email, examGroup } = req.body;
+  // Rate limiting (10 requests per minute per IP)
+  const clientIp = (
+    (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ||
+    req.socket?.remoteAddress ||
+    "unknown"
+  );
+  const rateLimit = checkServerlessRateLimit(`notify_${clientIp}`, 10, 60000);
+  if (!rateLimit.allowed) {
+    return res.status(429).json({ error: "Too many notification requests. Please try again after a minute." });
+  }
 
-    if (!email || typeof email !== "string") {
-      return res.status(400).json({ error: "Email is required and must be a string." });
+  try {
+    const { email, examGroup } = req.body || {};
+
+    if (!email || typeof email !== "string" || email.length > 254) {
+      return res.status(400).json({ error: "A valid email string (under 254 characters) is required." });
     }
 
     const trimmedEmail = email.trim().toLowerCase();
@@ -19,7 +30,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: "Please enter a valid email address." });
     }
 
-    const group = examGroup || "TS_EAPCET_BIPC";
+    const group = examGroup ? String(examGroup).trim() : "TS_EAPCET_BIPC";
+    if (!ALLOWED_EXAM_GROUPS.has(group)) {
+      return res.status(400).json({ error: `Invalid examGroup. Allowed groups: ${Array.from(ALLOWED_EXAM_GROUPS).join(", ")}.` });
+    }
 
     const db = getFirestoreDb();
     if (!db) {
@@ -50,7 +64,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     await db.collection("notify_requests").add({
       email: trimmedEmail,
       examGroup: group,
-      timestamp: new Date() // Serverless Firestore uses native Date or FieldValue.serverTimestamp()
+      timestamp: new Date()
     });
 
     return res.status(200).json({
@@ -59,6 +73,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
   } catch (err: any) {
     console.error("[NOTIFY SERVICE ERROR] Failed to register notification:", err);
-    return res.status(500).json({ error: "Server error occurred: " + err.message });
+    // Never expose raw internal error message to client
+    return res.status(500).json({ error: "Failed to register notification. Please try again later." });
   }
 }

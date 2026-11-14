@@ -1,0 +1,91 @@
+rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// This security rules file assumes the following data structures:
+//
+// Collection: colleges
+// Document ID: {datasetId}__{collegeRecordId}
+// Purpose: Public admissions and cutoff dataset for engineering/medical counseling
+// Access:
+//   - Read: Publicly readable by all prospective students and simulators
+//   - Write: Denied to all client SDKs (written strictly via verified admin backend using Firebase Admin SDK)
+// Fields:
+//   - id: string (unique identifier within dataset)
+//   - code: string (college institution code, e.g., 'CBIT', 'JNTUH')
+//   - name: string (college institution name)
+//   - branch: string (engineering / medical branch code)
+//   - district: string (college district)
+//   - type: string (e.g., 'Govt', 'Private-Autonomous')
+//   - fee: number (annual tuition fee in INR)
+//   - cutoffOC: number (open category cutoff rank)
+//   - cutoffBC: number (backward classes cutoff rank)
+//   - cutoffSCST: number (SC/ST cutoff rank)
+//   - region: string (admissions region, e.g., 'AU', 'OU', 'SVU')
+//   - exam: string (exam type: 'AP_EAPCET', 'TS_EAMCET', 'NEET_UG')
+//   - stream: string (stream type, e.g., 'MPC', 'BiPC')
+//   - year: int (counseling/admissions year)
+//   - datasetId: string (dataset grouping key, e.g., 'AP_EAPCET_MPC_2025')
+//   - datasetMetadata: map (metadata describing dataset verification status and version)
+//
+// Collection: notify_requests
+// Document ID: Auto-generated document ID
+// Purpose: Waiting list of student emails requesting launch/exam updates
+// Access:
+//   - Read: Denied to all client SDKs (protects student emails and PII from scraping/exposure)
+//   - Write: Denied to all client SDKs (written exclusively via backend service using Firebase Admin SDK)
+// Fields:
+//   - email: string (student email address)
+//   - examGroup: string (target examination group)
+//   - timestamp: timestamp (server receipt timestamp)
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    // Check if the request is from an authenticated user
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if the user is the owner of a resource by UID
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    // 1. Colleges Dataset:
+    // Students can publicly browse and search verified colleges and historical cutoffs.
+    // Client-side writes are strictly forbidden. Only backend processes authenticated
+    // via Firebase Admin SDK (which bypasses rules) can synchronize and modify datasets.
+    match /colleges/{collegeId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // 2. Notification Requests:
+    // Contains sensitive student PII (email addresses).
+    // Client-side reads and writes are completely prohibited to prevent email enumeration,
+    // data harvesting, and direct spam ingestion. All submissions are validated and created
+    // through the secure /api/notify-request server endpoint via Firebase Admin SDK.
+    match /notify_requests/{requestId} {
+      allow read, write: if false;
+    }
+
+    // 3. Default Deny:
+    // Block all unauthorized reads and writes to any unspecified documents or subcollections.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

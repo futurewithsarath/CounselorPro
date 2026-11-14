@@ -49,7 +49,6 @@ export default function AdminModal({ isOpen, onClose, onUploadSuccess }: AdminMo
         
         if (active) {
           setFirebaseConfig(config);
-          setAdminEmails(Array.isArray(config.adminEmails) ? config.adminEmails : []);
           setIsLoadingConfig(false);
 
           if (config.apiKey && config.projectId) {
@@ -268,11 +267,11 @@ export default function AdminModal({ isOpen, onClose, onUploadSuccess }: AdminMo
       const user = result.user;
       const token = await user.getIdToken();
       
-      if (user.email && adminEmails.includes(user.email.toLowerCase()) && user.emailVerified) {
+      if (user.email && user.emailVerified) {
         setIdToken(token);
         setAdminEmail(user.email);
       } else {
-        setAuthError(`Access denied. Use a verified administrator account configured by the site owner.`);
+        setAuthError(`A verified Google email account is required for administrator sign in.`);
         await signOut(firebaseAuth);
       }
     } catch (err: any) {
@@ -318,7 +317,7 @@ export default function AdminModal({ isOpen, onClose, onUploadSuccess }: AdminMo
 
   const isAccessAllowed = Boolean(
     isPasscodeAuthenticated || 
-    (adminEmail && adminEmails.map(e => e.toLowerCase()).includes(adminEmail.toLowerCase()))
+    (currentUser && currentUser.emailVerified && adminEmail)
   );
 
   return (

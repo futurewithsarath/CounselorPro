@@ -93,7 +93,6 @@ export default function ChoiceRefinement({ profile, selectedOptions, onNext, onB
         body: JSON.stringify({
           profile,
           options: selectedOptions,
-          customPrompt: prompt, // fallback context helper
         }),
       });
 
