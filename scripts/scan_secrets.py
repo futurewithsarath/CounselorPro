@@ -8,9 +8,11 @@ PATTERNS = {
     "Private Key Block": re.compile(r"-----BEGIN (?:[A-Z0-9_-]+ )?PRIVATE KEY-----"),
     "Google / Gemini API Key (Real)": re.compile(r"\bAIzaSy[A-Za-z0-9_-]{33}\b"),
     "Firebase Service Account JSON": re.compile(r'"type":\s*"service_account"'),
+    "Firebase Private Key String": re.compile(r'"private_key"\s*:\s*".*BEGIN'),
     "GitHub Personal Access Token": re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{36,}\b"),
     "AWS Access Key ID": re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
     "Slack Token": re.compile(r"\bxox[baprs]-[A-Za-z0-9_-]+\b"),
+    "Database Connection String": re.compile(r'(?:mongodb(?:\+srv)?|postgres|postgresql|mysql|redis):\/\/[^\s"\'<>]+'),
     "Generic Password Assignment": re.compile(r'(?i)(?:password|passwd|pwd|secret|api_key|apikey)\s*[:=]\s*["\']([a-zA-Z0-9_\-!@#$%^&*()+=]{8,})["\']')
 }
 
