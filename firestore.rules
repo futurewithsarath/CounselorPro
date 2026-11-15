@@ -4,14 +4,12 @@ rules_version = '2';
 // Assumed Data Model
 // ===============================================================
 //
-// This security rules file assumes the following data structures:
-//
 // Collection: colleges
-// Document ID: {datasetId}__{collegeRecordId}
+// Document ID: {collegeId} (e.g., {datasetId}__{collegeRecordId})
 // Purpose: Public admissions and cutoff dataset for engineering/medical counseling
 // Access:
-//   - Read: Publicly readable by all prospective students and simulators
-//   - Write: Denied to all client SDKs (written strictly via verified admin backend using Firebase Admin SDK)
+//   - Read: Publicly readable by all prospective students, simulators, and guests (allow read: if true;)
+//   - Write: Denied to client SDKs (written strictly via serverless backend with Firebase Admin SDK)
 // Fields:
 //   - id: string (unique identifier within dataset)
 //   - code: string (college institution code, e.g., 'CBIT', 'JNTUH')
@@ -24,22 +22,115 @@ rules_version = '2';
 //   - cutoffBC: number (backward classes cutoff rank)
 //   - cutoffSCST: number (SC/ST cutoff rank)
 //   - region: string (admissions region, e.g., 'AU', 'OU', 'SVU')
-//   - exam: string (exam type: 'AP_EAPCET', 'TS_EAMCET', 'NEET_UG')
+//   - exam: string (exam type: 'AP_EAPCET', 'TS_EAPCET', 'NEET_UG', 'JEE_MAIN')
 //   - stream: string (stream type, e.g., 'MPC', 'BiPC')
 //   - year: int (counseling/admissions year)
-//   - datasetId: string (dataset grouping key, e.g., 'AP_EAPCET_MPC_2025')
-//   - datasetMetadata: map (metadata describing dataset verification status and version)
+//   - datasetId: string (dataset grouping key)
+//   - datasetMetadata: map (dataset verification status and version)
 //
 // Collection: notify_requests
-// Document ID: Auto-generated document ID
+// Document ID: Auto-generated or hash document ID
 // Purpose: Waiting list of student emails requesting launch/exam updates
 // Access:
 //   - Read: Denied to all client SDKs (protects student emails and PII from scraping/exposure)
-//   - Write: Denied to all client SDKs (written exclusively via backend service using Firebase Admin SDK)
+//   - Write: Denied to all client SDKs (written strictly via server endpoint using Firebase Admin SDK)
 // Fields:
 //   - email: string (student email address)
 //   - examGroup: string (target examination group)
-//   - timestamp: timestamp (server receipt timestamp)
+//   - createdAt: timestamp (server receipt timestamp)
+//
+// Collection: audit_logs
+// Document ID: Auto-generated document ID
+// Purpose: Administrative and privilege escalation audit trail
+// Access:
+//   - Read: Denied to all client SDKs (internal server only)
+//   - Write: Denied to all client SDKs (written strictly via Firebase Admin SDK)
+// Fields:
+//   - event: string (audit event description)
+//   - superAdminUid: string (UID of executing super admin)
+//   - targetUid: string (affected target user UID)
+//   - timestamp: timestamp (server audit timestamp)
+//
+// Collection: users
+// Document ID: {userId} (matches Firebase Auth UID)
+// Purpose: User accounts for Students and Super Admins
+// Access:
+//   - Read: Document owner (request.auth.uid == userId) or Super Admin (UID '2tqT8SPAuqh5H3aw8hBxwsAjgCc2' && role 'super_admin')
+//   - Create: Document owner with default 'student' role, or Super Admin assigning validated roles
+//   - Update: Document owner can update profile info while role, uid, createdAt, and administrative status are strictly immutable;
+//            Super Admin can update any fields including role.
+//   - Delete: Document owner or Super Admin
+// Subcollections under /users/{userId}:
+//   - counsellingSessions/{sessionId}: Student saved counseling sessions (read, write: isOwner(userId) || isSuperAdmin())
+//   - savedChoices/{choiceId}: Student saved choice lists (read, write: isOwner(userId) || isSuperAdmin())
+//   - practiceResults/{resultId}: Student practice simulation results (read, write: isOwner(userId) || isSuperAdmin())
+//   - reports/{reportId}: Student generated reports (read, write: isOwner(userId) || isSuperAdmin())
+// Fields:
+//   - uid: string (required, immutable, matches document ID and auth UID, max 128 chars)
+//   - email: string | null (optional, valid email format, max 100 chars)
+//   - displayName: string | null (optional, max 100 chars)
+//   - phoneNumber: string | null (optional, max 30 chars)
+//   - photoURL: string | null (optional, valid URL format, max 500 chars)
+//   - providerIds: list of strings (optional, auth providers e.g. ['password', 'google.com'], max 10 items)
+//   - role: string (required, 'student' | 'super_admin' | 'admin' | 'data_manager')
+//   - accountStatus: string (optional, 'active' | 'suspended')
+//   - createdAt: timestamp | string (required, immutable)
+//   - updatedAt: timestamp | string | null (optional, last profile update timestamp)
+//   - lastLoginAt: timestamp | string | null (optional, session activity timestamp)
+//
+// Collection: practice_sessions
+// Document ID: {sessionId} (unique session identifier)
+// Purpose: Student counseling mock trial and simulation options list
+// Access:
+//   - Read: Session owner (request.auth.uid == resource.data.ownerUid) or Super Admin for support
+//   - Write: Session owner only (request.auth.uid == ownerUid)
+//   - Delete: Session owner or Super Admin
+// Fields:
+//   - id: string (required, session ID, max 128 chars)
+//   - ownerUid: string (required, matches student auth UID, immutable, max 128 chars)
+//   - title: string | null (optional, max 150 chars)
+//   - exam: string (required, exam type, max 50 chars)
+//   - stream: string (required, stream type, max 50 chars)
+//   - rank: number (required, student mock rank, >= 1, <= 2000000)
+//   - category: string (required, reservation category, max 50 chars)
+//   - gender: string (required, max 20 chars)
+//   - region: string (required, admissions region, max 20 chars)
+//   - choices: list (required, prioritized college options, max 200 items)
+//   - allottedCollege: map | null (optional, simulation allotment result)
+//   - createdAt: timestamp | string (required, immutable)
+//   - updatedAt: timestamp | string | null (optional)
+//
+// Collection: counselling_preferences
+// Document ID: {preferenceId} (e.g. pref_{uid}_{exam})
+// Purpose: Private student branch, district, and college type preferences
+// Access:
+//   - Read: Owner only (request.auth.uid == resource.data.ownerUid)
+//   - Write: Owner only (request.auth.uid == ownerUid)
+// Fields:
+//   - ownerUid: string (required, student auth UID, max 128 chars)
+//   - exam: string (required, max 50 chars)
+//   - preferredDistricts: list of strings (optional, max 50 items)
+//   - preferredBranches: list of strings (optional, max 50 items)
+//   - maxFee: number | null (optional, annual fee cap)
+//   - preferredTypes: list of strings (optional, max 30 items)
+//   - updatedAt: timestamp | string | null (optional)
+//
+// Collection: saved_drafts
+// Document ID: {draftId} (e.g. draft_{uid}_{exam})
+// Purpose: In-progress student counseling form state and options
+// Access:
+//   - Read: Owner only (request.auth.uid == resource.data.ownerUid)
+//   - Write: Owner only (request.auth.uid == ownerUid)
+// Fields:
+//   - id: string (required, max 128 chars)
+//   - ownerUid: string (required, student auth UID, max 128 chars)
+//   - title: string | null (optional, max 150 chars)
+//   - exam: string (required, max 50 chars)
+//   - stream: string | null (optional, max 50 chars)
+//   - step: string | null (optional, wizard step, max 50 chars)
+//   - profile: map | null (optional, student profile snapshot)
+//   - selectedOptions: list (optional, draft option entries, max 200 items)
+//   - updatedAt: timestamp | string | null (optional)
 //
 // ===============================================================
 
@@ -55,9 +146,134 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Check if the user is the owner of a resource by UID
+    // Check if the authenticated user matches the specified UID
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Single Super Admin authoritative check enforcing BOTH exact bootstrap UID and verified custom claim role
+    function isSuperAdmin() {
+      return request.auth != null &&
+        request.auth.uid == '2tqT8SPAuqh5H3aw8hBxwsAjgCc2' &&
+        request.auth.token.role == 'super_admin';
+    }
+
+    // Validate required fields exist in request resource
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // Validate that only explicitly permitted fields are present (prevents schema pollution)
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // Validate email format and bounded length
+    function isValidEmail(email) {
+      return email is string &&
+        email.size() <= 100 &&
+        email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // Validate URL format (http / https) and bounded length
+    function isValidUrl(url) {
+      return url is string &&
+        url.size() <= 500 &&
+        (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    // Validate ISO date string format (YYYY-MM-DDTHH:MM:SS...)
+    function isValidDateString(dateStr) {
+      return dateStr is string &&
+        dateStr.size() <= 50 &&
+        dateStr.matches("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}.*");
+    }
+
+    // Validate timestamp or ISO date string
+    function isValidTimestampOrDateString(val) {
+      return val is timestamp || isValidDateString(val);
+    }
+
+    // ===============================================================
+    // Domain Validators (Enforced in both create and update rules)
+    // ===============================================================
+
+    // Validate User Profile document integrity
+    function isValidUser(data, userId) {
+      return hasOnlyAllowedFields([
+          'uid', 'email', 'displayName', 'phoneNumber', 'photoURL',
+          'providerIds', 'role', 'accountStatus', 'createdAt', 'updatedAt', 'lastLoginAt'
+        ]) &&
+        hasRequiredFields(['uid', 'role', 'createdAt']) &&
+        data.uid is string &&
+        data.uid == userId &&
+        data.uid.size() > 0 &&
+        data.uid.size() <= 128 &&
+        data.role is string &&
+        data.role in ['student', 'super_admin', 'admin', 'data_manager'] &&
+        isValidTimestampOrDateString(data.createdAt) &&
+        (!('email' in data) || data.email == null || isValidEmail(data.email)) &&
+        (!('displayName' in data) || data.displayName == null || (data.displayName is string && data.displayName.size() <= 100)) &&
+        (!('phoneNumber' in data) || data.phoneNumber == null || (data.phoneNumber is string && data.phoneNumber.size() <= 30)) &&
+        (!('photoURL' in data) || data.photoURL == null || (data.photoURL is string && (data.photoURL.size() == 0 || isValidUrl(data.photoURL)))) &&
+        (!('providerIds' in data) || data.providerIds == null || (data.providerIds is list && data.providerIds.size() <= 10)) &&
+        (!('accountStatus' in data) || data.accountStatus == null || (data.accountStatus is string && data.accountStatus in ['active', 'suspended'])) &&
+        (!('updatedAt' in data) || data.updatedAt == null || isValidTimestampOrDateString(data.updatedAt)) &&
+        (!('lastLoginAt' in data) || data.lastLoginAt == null || isValidTimestampOrDateString(data.lastLoginAt));
+    }
+
+    // Validate Practice Session document integrity
+    function isValidPracticeSession(data) {
+      return hasOnlyAllowedFields([
+          'id', 'ownerUid', 'title', 'exam', 'stream', 'rank',
+          'category', 'gender', 'region', 'choices', 'allottedCollege', 'createdAt', 'updatedAt'
+        ]) &&
+        hasRequiredFields(['id', 'ownerUid', 'exam', 'stream', 'rank', 'category', 'gender', 'region', 'choices']) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+        data.ownerUid is string && data.ownerUid.size() > 0 && data.ownerUid.size() <= 128 &&
+        data.exam is string && data.exam.size() > 0 && data.exam.size() <= 50 &&
+        data.stream is string && data.stream.size() > 0 && data.stream.size() <= 50 &&
+        data.rank is number && data.rank >= 1 && data.rank <= 2000000 &&
+        data.category is string && data.category.size() > 0 && data.category.size() <= 50 &&
+        data.gender is string && data.gender.size() > 0 && data.gender.size() <= 20 &&
+        data.region is string && data.region.size() > 0 && data.region.size() <= 20 &&
+        data.choices is list && data.choices.size() <= 200 &&
+        (!('title' in data) || data.title == null || (data.title is string && data.title.size() <= 150)) &&
+        (!('allottedCollege' in data) || data.allottedCollege == null || data.allottedCollege is map) &&
+        (!('createdAt' in data) || isValidTimestampOrDateString(data.createdAt)) &&
+        (!('updatedAt' in data) || data.updatedAt == null || isValidTimestampOrDateString(data.updatedAt));
+    }
+
+    // Validate Counselling Preferences document integrity
+    function isValidCounsellingPreferences(data) {
+      return hasOnlyAllowedFields([
+          'ownerUid', 'exam', 'preferredDistricts', 'preferredBranches', 'maxFee', 'preferredTypes', 'updatedAt'
+        ]) &&
+        hasRequiredFields(['ownerUid', 'exam']) &&
+        data.ownerUid is string && data.ownerUid.size() > 0 && data.ownerUid.size() <= 128 &&
+        data.exam is string && data.exam.size() > 0 && data.exam.size() <= 50 &&
+        (!('preferredDistricts' in data) || data.preferredDistricts == null || (data.preferredDistricts is list && data.preferredDistricts.size() <= 50)) &&
+        (!('preferredBranches' in data) || data.preferredBranches == null || (data.preferredBranches is list && data.preferredBranches.size() <= 50)) &&
+        (!('preferredTypes' in data) || data.preferredTypes == null || (data.preferredTypes is list && data.preferredTypes.size() <= 30)) &&
+        (!('maxFee' in data) || data.maxFee == null || (data.maxFee is number && data.maxFee >= 0)) &&
+        (!('updatedAt' in data) || data.updatedAt == null || isValidTimestampOrDateString(data.updatedAt));
+    }
+
+    // Validate Student Draft document integrity
+    function isValidStudentDraft(data) {
+      return hasOnlyAllowedFields([
+          'id', 'ownerUid', 'title', 'exam', 'stream', 'step', 'profile', 'selectedOptions', 'updatedAt'
+        ]) &&
+        hasRequiredFields(['id', 'ownerUid', 'exam']) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+        data.ownerUid is string && data.ownerUid.size() > 0 && data.ownerUid.size() <= 128 &&
+        data.exam is string && data.exam.size() > 0 && data.exam.size() <= 50 &&
+        (!('title' in data) || data.title == null || (data.title is string && data.title.size() <= 150)) &&
+        (!('stream' in data) || data.stream == null || (data.stream is string && data.stream.size() <= 50)) &&
+        (!('step' in data) || data.step == null || (data.step is string && data.step.size() <= 50)) &&
+        (!('profile' in data) || data.profile == null || data.profile is map) &&
+        (!('selectedOptions' in data) || data.selectedOptions == null || (data.selectedOptions is list && data.selectedOptions.size() <= 200)) &&
+        (!('updatedAt' in data) || data.updatedAt == null || isValidTimestampOrDateString(data.updatedAt));
     }
 
     // ===============================================================
@@ -65,25 +281,155 @@ service cloud.firestore {
     // ===============================================================
 
     // 1. Colleges Dataset:
-    // Students can publicly browse and search verified colleges and historical cutoffs.
-    // Client-side writes are strictly forbidden. Only backend processes authenticated
-    // via Firebase Admin SDK (which bypasses rules) can synchronize and modify datasets.
+    // Public admissions dataset. Public read access is permitted for students, search, and simulators.
+    // Client SDK write access is completely denied; synchronization occurs via Firebase Admin SDK.
     match /colleges/{collegeId} {
       allow read: if true;
       allow write: if false;
     }
 
     // 2. Notification Requests:
-    // Contains sensitive student PII (email addresses).
-    // Client-side reads and writes are completely prohibited to prevent email enumeration,
-    // data harvesting, and direct spam ingestion. All submissions are validated and created
-    // through the secure /api/notify-request server endpoint via Firebase Admin SDK.
+    // Contains student PII (email addresses). Read and write access is denied to all client SDKs.
+    // Submissions are strictly handled server-side via Firebase Admin SDK.
     match /notify_requests/{requestId} {
       allow read, write: if false;
     }
 
-    // 3. Default Deny:
-    // Block all unauthorized reads and writes to any unspecified documents or subcollections.
+    // 3. Audit Logs:
+    // Privilege change and administrative audit trail. Internal server-only collection.
+    // All client reads and writes are forbidden; writes occur via Firebase Admin SDK.
+    match /audit_logs/{logId} {
+      allow read, write: if false;
+    }
+
+    // 4. User Profiles:
+    // User profile documents for Students and Super Admins.
+    // PII is restricted to the document owner or Super Admin.
+    // Public self-registration is strictly restricted to role == 'student'.
+    // Profile updates cannot alter immutable fields (uid, createdAt) and non-admins cannot change roles.
+    match /users/{userId} {
+      // Read: Profile owner or Super Admin
+      allow read: if isOwner(userId) || isSuperAdmin();
+
+      // Create: Owner self-registration strictly as 'student', or Super Admin
+      allow create: if isAuthenticated() &&
+        isValidUser(request.resource.data, userId) && (
+          (isOwner(userId) &&
+           request.resource.data.uid == request.auth.uid &&
+           request.resource.data.role == 'student' &&
+           (!('accountStatus' in request.resource.data) || request.resource.data.accountStatus == 'active')) ||
+          isSuperAdmin()
+        );
+
+      // Update: Owner can update profile info while role, uid, createdAt, and administrative status are immutable; Super Admin can update any fields
+      allow update: if isAuthenticated() &&
+        isValidUser(request.resource.data, userId) && (
+          (isOwner(userId) &&
+           request.resource.data.uid == resource.data.uid &&
+           request.resource.data.createdAt == resource.data.createdAt &&
+           request.resource.data.role == resource.data.role &&
+           (!('accountStatus' in resource.data) || request.resource.data.accountStatus == resource.data.accountStatus)) ||
+          isSuperAdmin()
+        );
+
+      // Delete: Account owner or Super Admin
+      allow delete: if isOwner(userId) || isSuperAdmin();
+
+      // Subcollections:
+      // 4a. Counselling Sessions subcollection
+      match /counsellingSessions/{sessionId} {
+        allow read, write: if isOwner(userId) || isSuperAdmin();
+      }
+
+      // 4b. Saved Choices subcollection
+      match /savedChoices/{choiceId} {
+        allow read, write: if isOwner(userId) || isSuperAdmin();
+      }
+
+      // 4c. Practice Results subcollection
+      match /practiceResults/{resultId} {
+        allow read, write: if isOwner(userId) || isSuperAdmin();
+      }
+
+      // 4d. Reports subcollection
+      match /reports/{reportId} {
+        allow read, write: if isOwner(userId) || isSuperAdmin();
+      }
+    }
+
+    // 5. Practice Sessions:
+    // Mock trial counseling sessions. Owned by student auth UID.
+    // Super Admin is granted read access for administrative and student support.
+    match /practice_sessions/{sessionId} {
+      // Read: Session owner or Super Admin for support
+      allow read: if isAuthenticated() && (
+        resource.data.ownerUid == request.auth.uid || isSuperAdmin()
+      );
+
+      // Create: Authenticated student creating a session matching their own UID
+      allow create: if isAuthenticated() &&
+        isValidPracticeSession(request.resource.data) &&
+        request.resource.data.ownerUid == request.auth.uid;
+
+      // Update: Session owner updating their session with immutable ownerUid
+      allow update: if isAuthenticated() &&
+        isValidPracticeSession(request.resource.data) &&
+        resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.ownerUid == resource.data.ownerUid &&
+        (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt);
+
+      // Delete: Session owner or Super Admin
+      allow delete: if isAuthenticated() && (
+        resource.data.ownerUid == request.auth.uid || isSuperAdmin()
+      );
+    }
+
+    // 6. Counselling Preferences:
+    // Student private preferences (districts, branches, college types).
+    // Restricted strictly to the student owner.
+    match /counselling_preferences/{preferenceId} {
+      // Read: Preference owner only
+      allow read: if isAuthenticated() && resource.data.ownerUid == request.auth.uid;
+
+      // Create: Authenticated owner setting preferences
+      allow create: if isAuthenticated() &&
+        isValidCounsellingPreferences(request.resource.data) &&
+        request.resource.data.ownerUid == request.auth.uid;
+
+      // Update: Preference owner with immutable ownerUid
+      allow update: if isAuthenticated() &&
+        isValidCounsellingPreferences(request.resource.data) &&
+        resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.ownerUid == resource.data.ownerUid;
+
+      // Delete: Preference owner only
+      allow delete: if isAuthenticated() && resource.data.ownerUid == request.auth.uid;
+    }
+
+    // 7. Saved Drafts:
+    // In-progress counseling form drafts.
+    // Restricted strictly to the student owner.
+    match /saved_drafts/{draftId} {
+      // Read: Draft owner only
+      allow read: if isAuthenticated() && resource.data.ownerUid == request.auth.uid;
+
+      // Create: Authenticated owner creating draft
+      allow create: if isAuthenticated() &&
+        isValidStudentDraft(request.resource.data) &&
+        request.resource.data.ownerUid == request.auth.uid;
+
+      // Update: Draft owner updating draft with immutable ownerUid
+      allow update: if isAuthenticated() &&
+        isValidStudentDraft(request.resource.data) &&
+        resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.ownerUid == resource.data.ownerUid;
+
+      // Delete: Draft owner only
+      allow delete: if isAuthenticated() && resource.data.ownerUid == request.auth.uid;
+    }
+
+    // 8. Default Deny:
+    // Block all unauthorized reads and writes to any unspecified collections or subcollections.
     match /{document=**} {
       allow read, write: if false;
     }

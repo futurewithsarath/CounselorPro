@@ -131,7 +131,7 @@ export default function ProfileForm({ exam, profile, onChange, onNext, onBack }:
         </p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-8 shadow-sm space-y-6">
         <div className="flex items-center gap-2 text-slate-800 font-bold text-lg border-b border-slate-100 pb-3 mb-2">
           <UserCircle className="w-5 h-5 text-emerald-600" />
           <span>Student Rank Details</span>
@@ -305,12 +305,13 @@ export default function ProfileForm({ exam, profile, onChange, onNext, onBack }:
       </div>
 
       {/* Navigation Buttons */}
-      <div className="mt-8 flex justify-between items-center border-t border-slate-200 pt-6">
+      <div className="mt-8 flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3 border-t border-slate-200 pt-6">
         <MotionButton
           variant="secondary"
           size="md"
           onClick={onBack}
           leftIcon={<ArrowLeft className="w-4 h-4" />}
+          className="w-full sm:w-auto"
         >
           Back
         </MotionButton>
@@ -321,6 +322,7 @@ export default function ProfileForm({ exam, profile, onChange, onNext, onBack }:
           id="profile-next-btn"
           shimmer
           rightIcon={<ArrowRight className="w-4 h-4" />}
+          className="w-full sm:w-auto"
         >
           Proceed to College Selection
         </MotionButton>

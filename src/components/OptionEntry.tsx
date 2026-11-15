@@ -15,6 +15,7 @@ interface OptionEntryProps {
 }
 
 export default function OptionEntry({ profile, selectedOptions, onUpdateOptions, onNext, onBack }: OptionEntryProps) {
+  const [mobileTab, setMobileTab] = useState<'available' | 'selected'>('available');
   const [search, setSearch] = useState('');
   const [selectedBranch, setSelectedBranch] = useState('ALL');
   const [selectedDistrict, setSelectedDistrict] = useState('ALL');
@@ -301,10 +302,38 @@ export default function OptionEntry({ profile, selectedOptions, onUpdateOptions,
         </div>
       )}
 
+      {/* Mobile Tab Switcher */}
+      <div className="flex lg:hidden border-b border-slate-200 mb-4 bg-white rounded-xl p-1 shadow-xs">
+        <button
+          type="button"
+          onClick={() => setMobileTab('available')}
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+            mobileTab === 'available'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          Available Colleges ({filteredColleges.length})
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab('selected')}
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all relative ${
+            mobileTab === 'selected'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          My Choices ({selectedOptions.length})
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
         {/* LEFT COLUMN: BROWSE & ADD COLLEGES (lg:col-span-5) */}
-        <div className="lg:col-span-5 bg-white border border-slate-200 rounded-xl shadow-xs p-4 h-[600px] sm:h-[700px] flex flex-col justify-between min-h-0">
+        <div className={`lg:col-span-5 bg-white border border-slate-200 rounded-xl shadow-xs p-4 h-[600px] sm:h-[700px] flex-col justify-between min-h-0 ${
+          mobileTab === 'available' ? 'flex' : 'hidden lg:flex'
+        }`}>
           <div>
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
               <span className="font-sans font-bold text-slate-950 flex items-center gap-1.5 text-sm">
@@ -498,7 +527,9 @@ export default function OptionEntry({ profile, selectedOptions, onUpdateOptions,
         </div>
 
         {/* RIGHT COLUMN: WEB OPTIONS PRIORITIZED LIST (lg:col-span-7) */}
-        <div className="lg:col-span-7 bg-white border border-slate-200 rounded-xl shadow-xs p-4 h-[700px] flex flex-col justify-between">
+        <div className={`lg:col-span-7 bg-white border border-slate-200 rounded-xl shadow-xs p-4 h-[600px] sm:h-[700px] flex-col justify-between ${
+          mobileTab === 'selected' ? 'flex' : 'hidden lg:flex'
+        }`}>
           <div className="h-[92%] flex flex-col justify-between">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-2">
               <span className="font-sans font-bold text-slate-950 flex items-center gap-1.5 text-sm">
@@ -864,26 +895,40 @@ export default function OptionEntry({ profile, selectedOptions, onUpdateOptions,
       </div>
 
       {/* Button Navigation Panel */}
-      <div className="mt-8 flex justify-between items-center border-t border-slate-200 pt-6">
+      <div className="mt-8 flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3 border-t border-slate-200 pt-6">
         <MotionButton
           variant="secondary"
           size="md"
           onClick={onBack}
+          className="w-full sm:w-auto"
         >
           Back
         </MotionButton>
 
-        <MotionButton
-          variant="primary"
-          size="lg"
-          onClick={onNext}
-          disabled={selectedOptions.length === 0 || collegesList.length === 0}
-          id="submit-options-btn"
-          shimmer
-          rightIcon={<ArrowUp className="w-4 h-4 rotate-90" />}
-        >
-          Proceed to Final Review
-        </MotionButton>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          {selectedOptions.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setMobileTab(mobileTab === 'available' ? 'selected' : 'available')}
+              className="lg:hidden px-4 py-2.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-colors"
+            >
+              {mobileTab === 'available' ? `Switch to My Choices (${selectedOptions.length})` : `Browse More Colleges`}
+            </button>
+          )}
+
+          <MotionButton
+            variant="primary"
+            size="lg"
+            onClick={onNext}
+            disabled={selectedOptions.length === 0 || collegesList.length === 0}
+            id="submit-options-btn"
+            shimmer
+            rightIcon={<ArrowUp className="w-4 h-4 rotate-90" />}
+            className="w-full sm:w-auto"
+          >
+            Proceed to Final Review ({selectedOptions.length})
+          </MotionButton>
+        </div>
       </div>
     </div>
   );

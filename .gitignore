@@ -5,10 +5,15 @@ coverage/
 .DS_Store
 *.log
 .env*
+.env
+.env.local
 !.env.example
+*.pem
 serviceAccountKey.json
+service-account*.json
 *key.json
 __pycache__/
 *.pyc
+*.pdf
 public/test_output/
 

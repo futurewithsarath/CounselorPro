@@ -312,12 +312,13 @@ export default function JeeProfileForm({
       </div>
 
       {/* Navigation Buttons */}
-      <div className="mt-8 flex justify-between items-center border-t border-slate-200 pt-6">
+      <div className="mt-8 flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3 border-t border-slate-200 pt-6">
         <MotionButton
           variant="secondary"
           size="md"
           onClick={onBack}
           leftIcon={<ArrowLeft className="w-4 h-4" />}
+          className="w-full sm:w-auto"
         >
           Back to Exam Selection
         </MotionButton>
@@ -328,6 +329,7 @@ export default function JeeProfileForm({
           id="jee-proceed-btn"
           shimmer
           rightIcon={<ArrowRight className="w-4 h-4" />}
+          className="w-full sm:w-auto"
         >
           Enter Choice-Filling Workspace
         </MotionButton>

@@ -1,6 +1,6 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
 import { getAuth } from "firebase-admin/auth";
-import { getAIClient, checkServerlessRateLimit, validateProfileAndOptions } from "../_lib/index";
+import { getAIClient, checkRateLimit, validateProfileAndOptions } from "../_lib/index";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
@@ -13,12 +13,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     req.socket?.remoteAddress ||
     "unknown"
   );
-  const rateLimit = checkServerlessRateLimit(`ai_${clientIp}`, 10, 60000);
-  if (!rateLimit.allowed) {
+  const ipRateLimit = await checkRateLimit(`ai_ip_${clientIp}`, 10, 60000);
+  if (!ipRateLimit.allowed) {
     return res.status(429).json({ error: "Too many AI analysis requests. Please try again after 1 minute." });
   }
 
-  // Require a verified Firebase ID token if user is logged in
+  // Require a verified Firebase ID token if user is logged in, and enforce per-user daily quota (30/day)
   const authHeader = req.headers.authorization;
   if (authHeader) {
     if (!authHeader.startsWith("Bearer ")) {
@@ -26,7 +26,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
     const token = authHeader.slice(7).trim();
     try {
-      await getAuth().verifyIdToken(token, true);
+      const decoded = await getAuth().verifyIdToken(token, true);
+      // Per-user daily quota (30 analyses / 24 hours)
+      const userRateLimit = await checkRateLimit(`ai_user_${decoded.uid}`, 30, 86400000);
+      if (!userRateLimit.allowed) {
+        return res.status(429).json({ error: "Daily AI analysis quota (30 requests/day) exceeded for this account." });
+      }
     } catch (authErr: any) {
       console.warn("[AI SERVICE] Failed to verify provided Firebase ID token:", authErr.message);
       return res.status(401).json({ error: "Invalid or expired Firebase ID token." });
@@ -106,7 +111,7 @@ Your sequence is generally **well-designed**. You have correctly followed the go
 
     const client = getAIClient();
     const response = await client.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
     });
 
@@ -115,6 +120,9 @@ Your sequence is generally **well-designed**. You have correctly followed the go
 
   } catch (err: any) {
     console.error("[AI SERVICE ERROR] Gemini API Error:", err);
+    if (err?.status === 429 || err?.message?.includes("RESOURCE_EXHAUSTED") || err?.message?.includes("quota")) {
+      return res.status(429).json({ error: "AI service quota temporarily exceeded. Please try again in a few moments." });
+    }
     return res.status(500).json({ error: "Failed to generate AI analysis. Please try again later." });
   }
 }

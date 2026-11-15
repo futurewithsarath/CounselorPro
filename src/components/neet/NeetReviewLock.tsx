@@ -21,6 +21,14 @@ import {
 } from 'lucide-react';
 import { NeetStudentProfile, NeetChoice, NeetPracticeLock } from '../../types';
 import { generateNeetPreferencePdf } from '../../utils/neetPdfExport';
+import { 
+  generatePreferenceListPdf, 
+  generateMockResultPdf, 
+  generateCombinedReportPdf, 
+  UniversalChoiceItem 
+} from '../../utils/universalPdfService';
+import ShareResultModal from '../ShareResultModal';
+import { Share2, FileText as FileTextIcon } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
 import Confetti from '../ui/Confetti';
 import MockAllotmentScanner from '../ui/MockAllotmentScanner';
@@ -31,6 +39,16 @@ interface NeetReviewLockProps {
   onBack: () => void;
   onUnlock: () => void;
   onOpenLearningCentre: () => void;
+}
+
+function generateSecureSessionId(prefix: string): string {
+  if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+    const bytes = new Uint8Array(4);
+    window.crypto.getRandomValues(bytes);
+    const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+    return `${prefix}-${hex}`;
+  }
+  return `${prefix}-${Date.now().toString(36).toUpperCase()}`;
 }
 
 export default function NeetReviewLock({
@@ -47,32 +65,6 @@ export default function NeetReviewLock({
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (showConfetti) {
-      const timer = setTimeout(() => setShowConfetti(false), 3200);
-      return () => clearTimeout(timer);
-    }
-  }, [showConfetti]);
-
-  // Download PDF Handler
-  const handleDownloadPdf = async () => {
-    try {
-      setIsGeneratingPdf(true);
-      setPdfError(null);
-      await generateNeetPreferencePdf({
-        profile,
-        choices,
-        lockData,
-        isLocked
-      });
-    } catch (err: any) {
-      console.error('PDF Generation Error:', err);
-      setPdfError(err?.message || 'Failed to generate PDF. Please try again.');
-    } finally {
-      setIsGeneratingPdf(false);
-    }
-  };
-
   // Mock Allotment Simulation States
   const [isSimulating, setIsSimulating] = useState(false);
   const [allotmentResult, setAllotmentResult] = useState<{
@@ -80,6 +72,135 @@ export default function NeetReviewLock({
     choice?: NeetChoice;
     reason?: string;
   } | null>(null);
+
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [pdfGeneratingType, setPdfGeneratingType] = useState<string | null>(null);
+
+  const getUniversalPreferences = (): UniversalChoiceItem[] => {
+    return choices.map(c => ({
+      priority: c.priority,
+      code: c.collegeCode || c.collegeId,
+      name: c.collegeName,
+      branchOrProgram: c.course,
+      districtOrState: `${c.city}, ${c.state}`,
+      authority: c.authority,
+      quota: c.quota,
+      fee: c.annualFee,
+      historicalCutoff: c.cutoffAIR
+    }));
+  };
+
+  const handleDownloadUniversalPreferenceList = async () => {
+    try {
+      setPdfGeneratingType('pref');
+      setPdfError(null);
+      await generatePreferenceListPdf({
+        profile: {
+          exam: 'NEET_UG',
+          stream: profile.selectedCourses?.[0] || 'MBBS',
+          rank: profile.allIndiaRank,
+          score: profile.neetScore,
+          category: profile.category,
+          gender: profile.gender,
+          domicileOrRegion: profile.domicileState,
+          localArea: profile.localArea
+        },
+        choices: getUniversalPreferences()
+      });
+    } catch (err: any) {
+      console.error('PDF Generation Error:', err);
+      setPdfError(err?.message || 'Failed to generate Preference List PDF.');
+    } finally {
+      setPdfGeneratingType(null);
+    }
+  };
+
+  const handleDownloadPdf = handleDownloadUniversalPreferenceList;
+
+  const handleDownloadMockResultPdf = async () => {
+    try {
+      setPdfGeneratingType('mock');
+      setPdfError(null);
+      const allottedChoice = allotmentResult?.choice;
+      await generateMockResultPdf({
+        profile: {
+          exam: 'NEET_UG',
+          stream: profile.selectedCourses?.[0] || 'MBBS',
+          rank: profile.allIndiaRank,
+          score: profile.neetScore,
+          category: profile.category,
+          gender: profile.gender,
+          domicileOrRegion: profile.domicileState,
+          localArea: profile.localArea
+        },
+        choices: getUniversalPreferences(),
+        mockResult: {
+          allotted: allotmentResult?.allotted ?? false,
+          collegeName: allottedChoice?.collegeName,
+          collegeCode: allottedChoice?.collegeCode,
+          branchName: allottedChoice?.course,
+          preferenceNumber: allottedChoice?.priority,
+          allotmentType: allottedChoice ? `${allottedChoice.authority} (${allottedChoice.quota})` : undefined,
+          fee: allottedChoice?.annualFee,
+          notes: allotmentResult?.reason
+        }
+      });
+    } catch (err: any) {
+      console.error('PDF Generation Error:', err);
+      setPdfError(err?.message || 'Failed to generate Mock Result PDF.');
+    } finally {
+      setPdfGeneratingType(null);
+    }
+  };
+
+  const handleDownloadCombinedReportPdf = async () => {
+    try {
+      setPdfGeneratingType('combined');
+      setPdfError(null);
+      const allottedChoice = allotmentResult?.choice;
+      await generateCombinedReportPdf({
+        profile: {
+          exam: 'NEET_UG',
+          stream: profile.selectedCourses?.[0] || 'MBBS',
+          rank: profile.allIndiaRank,
+          score: profile.neetScore,
+          category: profile.category,
+          gender: profile.gender,
+          domicileOrRegion: profile.domicileState,
+          localArea: profile.localArea
+        },
+        choices: getUniversalPreferences(),
+        mockResult: allotmentResult ? {
+          allotted: allotmentResult.allotted,
+          collegeName: allottedChoice?.collegeName,
+          collegeCode: allottedChoice?.collegeCode,
+          branchName: allottedChoice?.course,
+          preferenceNumber: allottedChoice?.priority,
+          allotmentType: allottedChoice ? `${allottedChoice.authority} (${allottedChoice.quota})` : undefined,
+          fee: allottedChoice?.annualFee,
+          notes: allotmentResult.reason
+        } : undefined
+      });
+    } catch (err: any) {
+      console.error('PDF Generation Error:', err);
+      setPdfError(err?.message || 'Failed to generate Combined Report PDF.');
+    } finally {
+      setPdfGeneratingType(null);
+    }
+  };
+
+  const socialCardData = {
+    exam: 'NEET_UG',
+    stream: profile.selectedCourses?.[0] || 'MBBS',
+    rank: profile.allIndiaRank,
+    category: profile.category,
+    totalChoices: choices.length,
+    allotted: Boolean(allotmentResult?.allotted),
+    collegeName: allotmentResult?.choice?.collegeName || choices[0]?.collegeName,
+    collegeCode: allotmentResult?.choice?.collegeCode || choices[0]?.collegeCode,
+    branchName: allotmentResult?.choice?.course || choices[0]?.course,
+    preferenceNumber: allotmentResult?.choice?.priority || (choices.length > 0 ? 1 : undefined)
+  };
 
   // Run Mock Allotment
   const runMockAllotment = () => {
@@ -126,7 +247,7 @@ export default function NeetReviewLock({
 
     const newLock: NeetPracticeLock = {
       lockedAt: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
-      sessionId: `NEET-PRACTICE-${Date.now().toString().slice(-6)}`,
+      sessionId: generateSecureSessionId('NEET-PRACTICE'),
       profile,
       choices,
       totalChoices: choices.length,
@@ -311,6 +432,69 @@ export default function NeetReviewLock({
           )}
         </div>
 
+        {/* Universal Download & Result Sharing Command Hub */}
+        <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 text-white rounded-2xl p-5 sm:p-6 shadow-md space-y-4 border border-emerald-800/40">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-800/40 pb-3">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-mono font-semibold">
+                <Sparkles className="w-3.5 h-3.5" />
+                Official Practice Documentation & Social Sharing
+              </div>
+              <h3 className="text-base font-bold text-white mt-1">
+                Universal PDF Downloads & Result Sharing
+              </h3>
+              <p className="text-xs text-slate-300">
+                Generate verified PDF documents with repeated headers and running page counts, or export 9:16 / 1:1 social cards.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1">
+            <MotionButton
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadUniversalPreferenceList}
+              disabled={pdfGeneratingType !== null}
+              className="bg-slate-800/90 hover:bg-slate-700 text-white border-slate-700 text-xs font-semibold py-2.5 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{pdfGeneratingType === 'pref' ? 'Generating...' : 'Preference List (PDF)'}</span>
+            </MotionButton>
+
+            <MotionButton
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadMockResultPdf}
+              disabled={pdfGeneratingType !== null || !allotmentResult}
+              className="bg-slate-800/90 hover:bg-slate-700 text-white border-slate-700 text-xs font-semibold py-2.5 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Award className="w-3.5 h-3.5 text-amber-400" />
+              <span>{pdfGeneratingType === 'mock' ? 'Generating...' : 'Mock Result (PDF)'}</span>
+            </MotionButton>
+
+            <MotionButton
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadCombinedReportPdf}
+              disabled={pdfGeneratingType !== null}
+              className="bg-slate-800/90 hover:bg-slate-700 text-white border-slate-700 text-xs font-semibold py-2.5 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <FileTextIcon className="w-3.5 h-3.5 text-sky-400" />
+              <span>{pdfGeneratingType === 'combined' ? 'Generating...' : 'Combined Report (PDF)'}</span>
+            </MotionButton>
+
+            <MotionButton
+              variant="primary"
+              size="sm"
+              onClick={() => setIsShareModalOpen(true)}
+              className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 text-xs font-bold py-2.5 flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+            >
+              <Share2 className="w-3.5 h-3.5 text-slate-950" />
+              <span>Share My Result</span>
+            </MotionButton>
+          </div>
+        </div>
+
         {/* PDF Generation Error Alert */}
         {pdfError && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800 flex items-center justify-between">
@@ -442,7 +626,7 @@ export default function NeetReviewLock({
             </div>
           </div>
         ) : (
-          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between flex-wrap gap-4">
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <p className="font-bold text-xs text-slate-900">
                 Ready to Lock Practice Choices?
@@ -452,13 +636,13 @@ export default function NeetReviewLock({
               </p>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
               <MotionButton
                 variant="outline"
                 size="md"
                 onClick={handleDownloadPdf}
                 disabled={isGeneratingPdf}
-                className="text-xs border-emerald-600 text-emerald-800 hover:bg-emerald-50 font-semibold"
+                className="w-full sm:w-auto text-xs border-emerald-600 text-emerald-800 hover:bg-emerald-50 font-semibold"
                 leftIcon={isGeneratingPdf ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5 text-emerald-600" />}
               >
                 {isGeneratingPdf ? 'Generating PDF...' : 'Download My Preference List (PDF)'}
@@ -468,7 +652,7 @@ export default function NeetReviewLock({
                 variant="primary"
                 size="md"
                 onClick={() => setShowConfirmModal(true)}
-                className="text-xs"
+                className="w-full sm:w-auto text-xs"
                 leftIcon={<Lock className="w-3.5 h-3.5" />}
               >
                 Lock Practice Choices
@@ -536,13 +720,21 @@ export default function NeetReviewLock({
         )}
       </AnimatePresence>
 
+      {/* Universal Share Result Modal */}
+      <ShareResultModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        cardData={socialCardData}
+      />
+
       {/* Bottom Navigation */}
-      <div className="mt-6 flex justify-between items-center border-t border-slate-200 pt-6">
+      <div className="mt-6 flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3 border-t border-slate-200 pt-6">
         <MotionButton
           variant="ghost"
           size="md"
           onClick={onBack}
           leftIcon={<ArrowLeft className="w-4 h-4" />}
+          className="w-full sm:w-auto"
         >
           Back to Option Entry
         </MotionButton>
@@ -552,6 +744,7 @@ export default function NeetReviewLock({
           size="md"
           onClick={onOpenLearningCentre}
           leftIcon={<BookOpen className="w-4 h-4 text-emerald-600" />}
+          className="w-full sm:w-auto"
         >
           View Counselling Rules
         </MotionButton>

@@ -10,6 +10,11 @@ export let COLLEGES_DATASET_METADATA: CollegeDatasetMetadata | null = null;
 const clientCache: Record<string, { colleges: College[]; metadata: CollegeDatasetMetadata }> = {};
 let activeLoadRequest = 0;
 
+export function clearCollegesClientCache(): void {
+  Object.keys(clientCache).forEach(key => delete clientCache[key]);
+  COLLEGES_DB.length = 0;
+}
+
 function mapDistrictAbbr(dist: string): string {
   const map: Record<string, string> = {
     VSKP: 'Visakhapatnam', EG: 'East Godavari', WG: 'West Godavari', ATP: 'Anantapur',
@@ -131,9 +136,27 @@ export async function loadRealCollegesForExam(exam: ExamType | null, stream: 'MP
     const metadata = payload.metadata as CollegeDatasetMetadata;
     clientCache[cacheKey] = { colleges: normalized, metadata };
     COLLEGES_DB.push(...normalized);
+
+    // Merge any dynamically created/edited admin colleges from local persistence
+    try {
+      const savedCustom = localStorage.getItem('counselor_custom_colleges');
+      if (savedCustom) {
+        const customList: College[] = JSON.parse(savedCustom);
+        const matchingCustom = customList.filter(c => c.exam === exam && (!c.stream || c.stream === stream));
+        for (const customCol of matchingCustom) {
+          const existingIdx = COLLEGES_DB.findIndex(c => c.id === customCol.id || (c.code === customCol.code && c.branch === customCol.branch));
+          if (existingIdx >= 0) {
+            COLLEGES_DB[existingIdx] = customCol;
+          } else {
+            COLLEGES_DB.unshift(customCol);
+          }
+        }
+      }
+    } catch {}
+
     COLLEGES_SOURCE_YEAR = year;
     COLLEGES_DATASET_METADATA = metadata;
-    COLLEGES_SOURCE = `${metadata.sourceTitle || examGroup} (${year}, ${normalized.length.toLocaleString()} course records)`;
+    COLLEGES_SOURCE = `${metadata.sourceTitle || examGroup} (${year}, ${COLLEGES_DB.length.toLocaleString()} course records)`;
     return COLLEGES_DB.length;
   } catch (error) {
     if (requestId !== activeLoadRequest) return 0;

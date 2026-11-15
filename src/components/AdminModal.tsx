@@ -206,6 +206,13 @@ export default function AdminModal({ isOpen, onClose, onUploadSuccess }: AdminMo
   const triggerUpload = async () => {
     if (!parsedData) return;
 
+    if (!idToken) {
+      setStatus('error');
+      setErrorMsg('A verified Firebase Admin ID token is required. Passcode alone cannot commit database writes. Please sign in with an allowlisted Google Admin account.');
+      appendLog('ACCESS BLOCKED: The server strictly enforces Firebase Admin ID token verification against ADMIN_EMAILS allowlist.');
+      return;
+    }
+
     setStatus('uploading');
     appendLog(`Initiating secure administrator pipeline...`);
     appendLog(`Validating and uploading the complete dataset as one versioned import...`);
@@ -322,16 +329,16 @@ export default function AdminModal({ isOpen, onClose, onUploadSuccess }: AdminMo
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-100 flex items-center justify-center p-0 sm:p-4" id="admin-modal-overlay">
-      <div className="bg-white rounded-none sm:rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl flex flex-col h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[90vh] overflow-hidden" id="admin-modal-container">
+      <div className="bg-white rounded-none sm:rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl flex flex-col h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[90dvh] overflow-hidden" id="admin-modal-container">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
           <div className="flex items-center gap-2">
             <div className="p-1.5 bg-emerald-600 text-white rounded-md">
               <Database className="w-5 h-5 animate-pulse" />
             </div>
             <div>
-              <h2 className="font-sans font-extrabold text-slate-900 tracking-tight text-base leading-none">Database Administration</h2>
+              <h2 className="font-sans font-extrabold text-slate-900 tracking-tight text-sm sm:text-base leading-none">Database Administration</h2>
               <p className="text-[10px] text-slate-500 font-mono mt-1">PROJECT: {firebaseConfig?.projectId || 'counselorpro-6975d'}</p>
             </div>
           </div>
@@ -346,7 +353,7 @@ export default function AdminModal({ isOpen, onClose, onUploadSuccess }: AdminMo
         {!isAccessAllowed ? (
           <>
             {/* Content View - AUTH GATE */}
-            <div className="p-6 flex-grow overflow-y-auto space-y-6">
+            <div className="p-4 sm:p-6 flex-grow overflow-y-auto space-y-6">
               <div className="text-center max-w-md mx-auto py-4 space-y-4">
                 <div className="inline-flex p-3.5 bg-slate-50 border border-slate-200/80 text-slate-700 rounded-2xl shadow-2xs">
                   <Lock className="w-8 h-8 text-slate-600" />
@@ -449,19 +456,35 @@ export default function AdminModal({ isOpen, onClose, onUploadSuccess }: AdminMo
           <>
             {/* Content View - UNLOCKED PANEL */}
             <div className="p-6 flex-grow overflow-y-auto space-y-6">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-emerald-50/60 border border-emerald-100 rounded-xl p-4 text-emerald-800">
-                <div className="flex gap-3 text-emerald-800">
-                  <ShieldCheck className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+              <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border rounded-xl p-4 ${
+                idToken 
+                  ? 'bg-emerald-50/60 border-emerald-200 text-emerald-800' 
+                  : 'bg-amber-50/60 border-amber-200 text-amber-800'
+              }`}>
+                <div className="flex gap-3">
+                  {idToken ? (
+                    <ShieldCheck className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  )}
                   <div className="text-xs space-y-1">
-                    <span className="font-bold block">Verified Session: {adminEmail}</span>
-                    <p className="leading-relaxed text-emerald-700">
-                      You are authenticated as the system administrator. Database writes will commit directly to Firestore.
+                    <span className="font-bold block">
+                      {idToken ? `Verified Google Admin: ${adminEmail}` : `Passcode Preview Session: ${adminEmail}`}
+                    </span>
+                    <p className={`leading-relaxed ${idToken ? 'text-emerald-700' : 'text-amber-700'}`}>
+                      {idToken
+                        ? 'Authenticated with a valid Firebase ID token. Database writes will commit directly to Firestore.'
+                        : 'Offline schema inspector mode. Server-side database commits strictly require an allowlisted Google Admin session.'}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={handleSignOutAdmin}
-                  className="px-2.5 py-1.5 bg-emerald-100/80 hover:bg-emerald-150 border border-emerald-200 text-emerald-800 font-semibold rounded-lg text-[10px] font-mono flex items-center gap-1 transition-all shrink-0 cursor-pointer"
+                  className={`px-2.5 py-1.5 border font-semibold rounded-lg text-[10px] font-mono flex items-center gap-1 transition-all shrink-0 cursor-pointer ${
+                    idToken
+                      ? 'bg-emerald-100/80 hover:bg-emerald-150 border-emerald-200 text-emerald-800'
+                      : 'bg-amber-100/80 hover:bg-amber-150 border-amber-200 text-amber-800'
+                  }`}
                   title="Sign Out Admin"
                 >
                   <LogOut className="w-3 h-3" />

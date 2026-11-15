@@ -111,9 +111,11 @@ console.log("\nTEST 3: Admin Email Leakage & Hardcoded Email Elimination");
   assert.ok(!apiConfigCode.includes("adminEmails"), "api/config/firebase.ts must not expose adminEmails");
   console.log("  ✓ PASS: /api/config/firebase does not return adminEmails to the client");
 
-  assert.ok(serverCode.includes("ADMIN_EMAILS environment variable is not configured. Failing closed."));
-  assert.ok(apiUploadCode.includes("ADMIN_EMAILS environment variable is not configured. Failing closed."));
-  console.log("  ✓ PASS: Server fails closed with 403 when ADMIN_EMAILS env is missing or empty");
+  const enforcesFailClosedAdmin = (serverCode.includes("SUPER_ADMIN_UID") && serverCode.includes('matchesSuperAdminUid')) || serverCode.includes("ADMIN_EMAILS environment variable is not configured. Failing closed.");
+  assert.ok(enforcesFailClosedAdmin, "server.ts must enforce authoritative Super Admin validation failing closed");
+  const enforcesFailClosedApi = (apiUploadCode.includes("SUPER_ADMIN_UID") && apiUploadCode.includes('matchesSuperAdminUid')) || apiUploadCode.includes("ADMIN_EMAILS environment variable is not configured. Failing closed.");
+  assert.ok(enforcesFailClosedApi, "upload-colleges.ts must enforce authoritative Super Admin validation failing closed");
+  console.log("  ✓ PASS: Server and API fail closed with 403 when Super Admin credentials are missing or mismatched");
 }
 
 // TEST 4: Global Express JSON Limit & Upload Exemption
@@ -194,6 +196,51 @@ console.log("\nTEST 8: Firestore Security Rules Integrity");
   console.log("  ✓ PASS: Firestore security rules enforce strict read/write boundaries");
 }
 
+// TEST 9: Official Gemini Model Name & Production Mock Key Prevention
+console.log("\nTEST 9: Gemini Official Model & Mock Prevention");
+{
+  const aiServerless = fs.readFileSync(path.join(process.cwd(), "api", "ai", "analyze-choices.ts"), "utf8");
+  const serverCode = fs.readFileSync(path.join(process.cwd(), "server.ts"), "utf8");
+  const libCode = fs.readFileSync(path.join(process.cwd(), "api", "_lib", "index.ts"), "utf8");
+
+  assert.ok(!aiServerless.includes("gemini-3.5-flash"), "Non-existent model gemini-3.5-flash must be removed");
+  assert.ok(!serverCode.includes("gemini-3.5-flash"), "Non-existent model gemini-3.5-flash must be removed from server.ts");
+  assert.ok(aiServerless.includes('model: "gemini-2.5-flash"'), "Official model gemini-2.5-flash configured in serverless");
+  assert.ok(serverCode.includes('model: "gemini-2.5-flash"'), "Official model gemini-2.5-flash configured in server.ts");
+  assert.ok(libCode.includes("GEMINI_API_KEY environment variable is not configured in production"), "Must throw in production if key is missing");
+  console.log("  ✓ PASS: Official gemini-2.5-flash model configured with strict production key enforcement");
+}
+
+// TEST 10: Race Condition Elimination in notify-request
+console.log("\nTEST 10: notify-request Race Condition Fix");
+{
+  const notifyServerless = fs.readFileSync(path.join(process.cwd(), "api", "notify-request.ts"), "utf8");
+  const serverCode = fs.readFileSync(path.join(process.cwd(), "server.ts"), "utf8");
+
+  assert.ok(notifyServerless.includes("crypto.createHash(\"sha256\").update"), "Uses deterministic SHA-256 docId");
+  assert.ok(notifyServerless.includes("docRef.create"), "Uses docRef.create to eliminate TOCTOU check-then-add race condition");
+  assert.ok(notifyServerless.includes("FieldValue.serverTimestamp()"), "Uses FieldValue.serverTimestamp() for createdAt");
+
+  assert.ok(serverCode.includes("crypto.createHash(\"sha256\").update"), "Server.ts uses deterministic SHA-256 docId");
+  assert.ok(serverCode.includes("docRef.create"), "Server.ts uses docRef.create");
+  assert.ok(serverCode.includes("FieldValue.serverTimestamp()"), "Server.ts uses FieldValue.serverTimestamp()");
+  console.log("  ✓ PASS: Deterministic document ID and atomic creation eliminate duplicate race conditions");
+}
+
+// TEST 11: Cryptographically Secure Session IDs
+console.log("\nTEST 11: Cryptographic Random Session IDs");
+{
+  const neetLock = fs.readFileSync(path.join(process.cwd(), "src", "components", "neet", "NeetReviewLock.tsx"), "utf8");
+  const jeeLock = fs.readFileSync(path.join(process.cwd(), "src", "components", "jee", "JeeReviewLock.tsx"), "utf8");
+
+  assert.ok(!neetLock.includes("Date.now().toString().slice(-6)"), "Date.now() removed from NEET lock session ID");
+  assert.ok(neetLock.includes("window.crypto.getRandomValues"), "NEET lock uses window.crypto.getRandomValues");
+
+  assert.ok(!jeeLock.includes("sessionId: `CP-JEE-${Date.now()"), "Date.now() removed from JEE lock session ID initialization");
+  assert.ok(jeeLock.includes("window.crypto.getRandomValues"), "JEE lock uses window.crypto.getRandomValues");
+  console.log("  ✓ PASS: Lock session IDs generated with cryptographically secure random values");
+}
+
 console.log("\n========================================================================");
-console.log("           ALL 8 SECURITY AUDIT TESTS PASSED (100% SUCCESS)             ");
+console.log("          ALL 11 SECURITY AUDIT TESTS PASSED (100% SUCCESS)             ");
 console.log("========================================================================");

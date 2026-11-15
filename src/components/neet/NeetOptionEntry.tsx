@@ -859,6 +859,39 @@ export default function NeetOptionEntry({
         </div>
 
       </div>
+
+      {/* Mobile Navigation & Quick Actions Bar */}
+      <div className="md:hidden mt-6 pt-4 border-t border-slate-200 flex flex-col gap-2">
+        <div className="flex gap-2">
+          <MotionButton
+            variant="secondary"
+            size="md"
+            onClick={onBack}
+            className="flex-1 text-xs"
+          >
+            Back to Profile
+          </MotionButton>
+          <button
+            type="button"
+            onClick={() => setActiveMobileTab(activeMobileTab === 'available' ? 'selected' : 'available')}
+            className="flex-1 px-3 py-2 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-colors text-center"
+          >
+            {activeMobileTab === 'available' ? `View Choices (${selectedChoices.length})` : 'Browse Colleges'}
+          </button>
+        </div>
+        {selectedChoices.length > 0 && (
+          <MotionButton
+            variant="primary"
+            size="lg"
+            onClick={onNext}
+            className="w-full text-xs font-bold"
+            shimmer
+            rightIcon={<ArrowRight className="w-4 h-4" />}
+          >
+            Review & Mock Allotment ({selectedChoices.length})
+          </MotionButton>
+        )}
+      </div>
     </div>
   );
 }

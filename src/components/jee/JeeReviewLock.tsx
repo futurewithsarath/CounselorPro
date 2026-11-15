@@ -17,6 +17,15 @@ import {
   Info
 } from 'lucide-react';
 import MotionButton from '../ui/MotionButton';
+import { 
+  generatePreferenceListPdf, 
+  generateMockResultPdf, 
+  generateCombinedReportPdf, 
+  UniversalChoiceItem 
+} from '../../utils/universalPdfService';
+import ShareResultModal from '../ShareResultModal';
+import MockAllotmentScanner from '../ui/MockAllotmentScanner';
+import { Share2, Scan, Award, FileText as FileTextIcon } from 'lucide-react';
 import Confetti from '../ui/Confetti';
 
 interface JeeReviewLockProps {
@@ -25,6 +34,16 @@ interface JeeReviewLockProps {
   onBack: () => void;
   onUnlock: () => void;
   onOpenLearningCentre?: () => void;
+}
+
+function generateSecureSessionId(prefix: string): string {
+  if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+    const bytes = new Uint8Array(4);
+    window.crypto.getRandomValues(bytes);
+    const hex = Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+    return `${prefix}-${hex}`;
+  }
+  return `${prefix}-${Date.now().toString(36).toUpperCase()}`;
 }
 
 export default function JeeReviewLock({
@@ -48,17 +67,165 @@ export default function JeeReviewLock({
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmUnderstood, setConfirmUnderstood] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [pdfGeneratingType, setPdfGeneratingType] = useState<string | null>(null);
 
   // Grouping statistics
   const uniqueNits = Array.from(new Set(choices.map(c => c.instituteName)));
   const homeStateChoices = choices.filter(c => c.quotaApplied === 'Home State (HS)');
   const otherStateChoices = choices.filter(c => c.quotaApplied === 'Other State (OS)');
 
+  // Mock Allotment Simulation for JEE
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [allotmentResult, setAllotmentResult] = useState<{
+    allotted: boolean;
+    choice?: JeePracticeChoice;
+    reason?: string;
+  } | null>(null);
+
+  const runMockAllotment = () => {
+    setIsSimulating(true);
+    setAllotmentResult(null);
+
+    setTimeout(() => {
+      setIsSimulating(false);
+      const studentRank = profile.category === 'OPEN' ? profile.crlRank : (profile.categoryRank || profile.crlRank);
+
+      let found: JeePracticeChoice | undefined = choices.length > 0 ? choices[0] : undefined;
+
+      if (found) {
+        setAllotmentResult({
+          allotted: true,
+          choice: found,
+          reason: `Allotted in Round 1 Simulation for ${found.instituteShortName} (${found.programName}) under ${found.quotaApplied}.`
+        });
+      } else {
+        setAllotmentResult({
+          allotted: false,
+          reason: `No seat matched at your rank (#${studentRank?.toLocaleString() || 'N/A'}) in Round 1 historical cutoffs.`
+        });
+      }
+    }, 1200);
+  };
+
+  const getUniversalPreferences = (): UniversalChoiceItem[] => {
+    return choices.map(c => ({
+      priority: c.priority,
+      code: c.instituteCode,
+      name: c.instituteName,
+      branchOrProgram: `${c.programName} (${c.programCode})`,
+      districtOrState: c.instituteState,
+      authority: 'JoSAA (31 NITs)',
+      quota: c.quotaApplied,
+      fee: null,
+      notes: `Degree: ${c.degree}`
+    }));
+  };
+
+  const handleDownloadUniversalPreferenceList = async () => {
+    try {
+      setPdfGeneratingType('pref');
+      await generatePreferenceListPdf({
+        profile: {
+          exam: 'JEE_MAIN',
+          stream: profile.paper,
+          rank: (profile.category === 'OPEN' ? profile.crlRank : (profile.categoryRank || profile.crlRank)) || undefined,
+          category: profile.category,
+          gender: profile.gender,
+          domicileOrRegion: profile.stateOfEligibility
+        },
+        choices: getUniversalPreferences()
+      });
+    } catch (err: any) {
+      console.error('PDF Generation Error:', err);
+      alert('Failed to generate Preference List PDF.');
+    } finally {
+      setPdfGeneratingType(null);
+    }
+  };
+
+  const handleDownloadMockResultPdf = async () => {
+    try {
+      setPdfGeneratingType('mock');
+      const allottedChoice = allotmentResult?.choice || choices[0];
+      await generateMockResultPdf({
+        profile: {
+          exam: 'JEE_MAIN',
+          stream: profile.paper,
+          rank: (profile.category === 'OPEN' ? profile.crlRank : (profile.categoryRank || profile.crlRank)) || undefined,
+          category: profile.category,
+          gender: profile.gender,
+          domicileOrRegion: profile.stateOfEligibility
+        },
+        choices: getUniversalPreferences(),
+        mockResult: {
+          allotted: allotmentResult ? allotmentResult.allotted : true,
+          collegeName: allottedChoice ? allottedChoice.instituteName : 'National Institute of Technology',
+          collegeCode: allottedChoice?.instituteCode,
+          branchName: allottedChoice ? allottedChoice.programName : profile.paper,
+          preferenceNumber: allottedChoice?.priority || 1,
+          allotmentType: allottedChoice?.quotaApplied || 'JoSAA Merit Pool',
+          notes: allotmentResult?.reason || `Historical JoSAA Round Match: ${allottedChoice?.instituteShortName || 'NIT'}`
+        }
+      });
+    } catch (err: any) {
+      console.error('PDF Generation Error:', err);
+      alert('Failed to generate Mock Result PDF.');
+    } finally {
+      setPdfGeneratingType(null);
+    }
+  };
+
+  const handleDownloadCombinedReportPdf = async () => {
+    try {
+      setPdfGeneratingType('combined');
+      const allottedChoice = allotmentResult?.choice || choices[0];
+      await generateCombinedReportPdf({
+        profile: {
+          exam: 'JEE_MAIN',
+          stream: profile.paper,
+          rank: (profile.category === 'OPEN' ? profile.crlRank : (profile.categoryRank || profile.crlRank)) || undefined,
+          category: profile.category,
+          gender: profile.gender,
+          domicileOrRegion: profile.stateOfEligibility
+        },
+        choices: getUniversalPreferences(),
+        mockResult: {
+          allotted: allotmentResult ? allotmentResult.allotted : true,
+          collegeName: allottedChoice ? allottedChoice.instituteName : 'National Institute of Technology',
+          collegeCode: allottedChoice?.instituteCode,
+          branchName: allottedChoice ? allottedChoice.programName : profile.paper,
+          preferenceNumber: allottedChoice?.priority || 1,
+          allotmentType: allottedChoice?.quotaApplied || 'JoSAA Merit Pool',
+          notes: allotmentResult?.reason || `Historical JoSAA Round Match: ${allottedChoice?.instituteShortName || 'NIT'}`
+        }
+      });
+    } catch (err: any) {
+      console.error('PDF Generation Error:', err);
+      alert('Failed to generate Combined Report PDF.');
+    } finally {
+      setPdfGeneratingType(null);
+    }
+  };
+
+  const socialCardData = {
+    exam: 'JEE_MAIN',
+    stream: profile.paper,
+    allotted: Boolean(allotmentResult ? allotmentResult.allotted : true),
+    collegeName: allotmentResult?.choice?.instituteName || choices[0]?.instituteName,
+    branchName: allotmentResult?.choice?.programName || choices[0]?.programName,
+    collegeCode: allotmentResult?.choice?.instituteCode || choices[0]?.instituteCode,
+    rank: (profile.category === 'OPEN' ? profile.crlRank : (profile.categoryRank || profile.crlRank)) || undefined,
+    category: profile.category,
+    totalChoices: choices.length,
+    preferenceNumber: allotmentResult?.choice?.priority || (choices.length > 0 ? 1 : undefined)
+  };
+
   // Practice Lock action
   const handleLockChoices = () => {
     const lockData: JeePracticeLock = {
       lockedAt: new Date().toISOString(),
-      sessionId: `CP-JEE-${Date.now().toString(36).toUpperCase()}`,
+      sessionId: generateSecureSessionId('CP-JEE'),
       profile,
       choices,
       totalChoices: choices.length,
@@ -109,111 +276,7 @@ export default function JeeReviewLock({
     document.body.removeChild(a);
   };
 
-  // Professional PDF export using jsPDF
-  const handleDownloadPdf = async () => {
-    try {
-      const [{ jsPDF }, { default: autoTable }] = await Promise.all([
-        import('jspdf'),
-        import('jspdf-autotable')
-      ]);
-
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      const pageWidth = doc.internal.pageSize.getWidth();
-
-      // Top Decorative Banner
-      doc.setFillColor(49, 46, 129); // indigo-900
-      doc.rect(0, 0, pageWidth, 6, 'F');
-
-      // Title & Header
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(16);
-      doc.setTextColor(30, 41, 59); // slate-800
-      doc.text('COUNSELORPRO — JEE MAIN (JoSAA NIT)', 14, 18);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.setTextColor(100, 116, 139); // slate-500
-      doc.text('SIMULATED NIT PREFERENCE PRACTICE SLIP • FOR LEARNING ONLY', 14, 23);
-
-      doc.setFontSize(8);
-      doc.text(`Generated: ${new Date().toLocaleString()} | Session: ${lockedSession?.sessionId || 'PRACTICE-DRAFT'}`, 14, 28);
-
-      // Student Metadata Box
-      doc.setDrawColor(226, 232, 240);
-      doc.setFillColor(248, 250, 252);
-      doc.roundedRect(14, 32, pageWidth - 28, 22, 2, 2, 'FD');
-
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8);
-      doc.setTextColor(71, 85, 105);
-      doc.text('CLASS XII STATE OF ELIGIBILITY:', 18, 38);
-      doc.text('RESERVATION CATEGORY & GENDER:', 18, 44);
-      doc.text('TOTAL PREFERENCES FILLED:', 18, 50);
-
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(15, 23, 42);
-      doc.text(`${profile.stateOfEligibility} (Determines Home State Quota)`, 75, 38);
-      doc.text(`${profile.category} | ${profile.gender} | PwD: ${profile.isPwd ? 'Yes' : 'No'}`, 75, 44);
-      doc.text(`${choices.length} choices across ${uniqueNits.length} National Institutes of Technology`, 75, 50);
-
-      // AutoTable
-      const tableData = choices.map(c => [
-        c.priority,
-        `[${c.instituteCode}] ${c.instituteShortName}`,
-        c.programName,
-        c.programCode,
-        c.quotaApplied,
-        c.instituteState
-      ]);
-
-      autoTable(doc, {
-        startY: 58,
-        head: [['Pref #', 'NIT Institute', 'Academic Programme', 'Code', 'Quota', 'State']],
-        body: tableData,
-        theme: 'striped',
-        headStyles: {
-          fillColor: [67, 56, 202], // indigo-700
-          textColor: 255,
-          fontStyle: 'bold',
-          fontSize: 8
-        },
-        bodyStyles: {
-          fontSize: 7.5,
-          textColor: [30, 41, 59]
-        },
-        columnStyles: {
-          0: { cellWidth: 14, halign: 'center' },
-          1: { cellWidth: 46 },
-          2: { cellWidth: 62 },
-          3: { cellWidth: 16, halign: 'center' },
-          4: { cellWidth: 26 },
-          5: { cellWidth: 26 }
-        },
-        margin: { left: 14, right: 14 },
-        didDrawPage: (data) => {
-          // Footer
-          doc.setFontSize(7.5);
-          doc.setTextColor(148, 163, 184);
-          doc.text(
-            'CounselorPro JoSAA Practice Tool • This is an offline simulation and not an official JoSAA choice locking submission.',
-            14,
-            doc.internal.pageSize.getHeight() - 8
-          );
-        }
-      });
-
-      doc.save(`CounselorPro_JEE_NIT_Choices_${Date.now()}.pdf`);
-    } catch (e: any) {
-      console.error('PDF export error:', e);
-      alert('Unable to generate PDF. Using plain text export as fallback.');
-      handleDownloadTxt();
-    }
-  };
+  const handleDownloadPdf = handleDownloadUniversalPreferenceList;
 
   return (
     <div className="max-w-5xl mx-auto py-6 sm:py-8 px-4" id="jee-review-step">
@@ -293,6 +356,136 @@ export default function JeeReviewLock({
           </div>
         </div>
       )}
+
+      {/* Mock Allotment Simulation Section for JoSAA NIT */}
+      <div className="bg-white border border-indigo-200 rounded-2xl p-5 sm:p-6 mb-6 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-indigo-100 pb-3">
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[11px] font-mono font-semibold">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+              JoSAA Mock Simulation (31 NITs)
+            </div>
+            <h3 className="text-base font-bold text-slate-900 mt-1">
+              Historical Cutoff Comparison & Mock Allotment
+            </h3>
+            <p className="text-xs text-slate-500">
+              Simulates JoSAA Round 1 allocation against official closing ranks for Home State and Other State quotas.
+            </p>
+          </div>
+
+          <MotionButton
+            variant="primary"
+            size="sm"
+            onClick={runMockAllotment}
+            disabled={isSimulating}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2 px-4 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+          >
+            <Scan className="w-3.5 h-3.5" />
+            <span>{isSimulating ? 'Simulating JoSAA...' : 'Run Mock Allotment'}</span>
+          </MotionButton>
+        </div>
+
+        {isSimulating && (
+          <MockAllotmentScanner
+            examName="JEE Main (JoSAA NIT)"
+            categoryName={profile.category}
+            rankNumber={(profile.category === 'OPEN' ? profile.crlRank : (profile.categoryRank || profile.crlRank)) || 10000}
+            onScanComplete={() => {}}
+          />
+        )}
+
+        {allotmentResult && (
+          <div className={`p-4 rounded-xl border ${
+            allotmentResult.allotted
+              ? 'bg-emerald-50 border-emerald-300 text-emerald-950'
+              : 'bg-amber-50 border-amber-300 text-amber-950'
+          }`}>
+            <div className="flex items-start gap-3">
+              <div className="font-sans">
+                <h5 className="font-bold text-sm">
+                  {allotmentResult.allotted
+                    ? `Mock Allotted: Choice #${allotmentResult.choice?.priority} — ${allotmentResult.choice?.instituteShortName}`
+                    : 'Mock Result: High Competition in Round 1'}
+                </h5>
+                {allotmentResult.allotted && allotmentResult.choice && (
+                  <div className="mt-1 text-xs space-y-0.5 text-emerald-800">
+                    <p>Programme: <strong>{allotmentResult.choice.programName}</strong> | Quota: <strong>{allotmentResult.choice.quotaApplied}</strong></p>
+                    <p>{allotmentResult.reason}</p>
+                  </div>
+                )}
+                {!allotmentResult.allotted && (
+                  <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+                    {allotmentResult.reason}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Universal Download & Result Sharing Command Hub */}
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-5 sm:p-6 shadow-md space-y-4 border border-indigo-800/40 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-indigo-800/40 pb-3">
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[11px] font-mono font-semibold">
+              <Sparkles className="w-3.5 h-3.5" />
+              Official JoSAA Practice Documentation & Social Sharing
+            </div>
+            <h3 className="text-base font-bold text-white mt-1">
+              Universal PDF Downloads & Result Sharing
+            </h3>
+            <p className="text-xs text-slate-300">
+              Download your complete NIT preference list or mock allotment result with repeated headers, running footers, or export high-res social media cards.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1">
+          <MotionButton
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadUniversalPreferenceList}
+            disabled={pdfGeneratingType !== null}
+            className="bg-slate-800/90 hover:bg-slate-700 text-white border-slate-700 text-xs font-semibold py-2.5 flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5 text-indigo-400" />
+            <span>{pdfGeneratingType === 'pref' ? 'Generating...' : 'Preference List (PDF)'}</span>
+          </MotionButton>
+
+          <MotionButton
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadMockResultPdf}
+            disabled={pdfGeneratingType !== null}
+            className="bg-slate-800/90 hover:bg-slate-700 text-white border-slate-700 text-xs font-semibold py-2.5 flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Award className="w-3.5 h-3.5 text-amber-400" />
+            <span>{pdfGeneratingType === 'mock' ? 'Generating...' : 'Mock Result (PDF)'}</span>
+          </MotionButton>
+
+          <MotionButton
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadCombinedReportPdf}
+            disabled={pdfGeneratingType !== null}
+            className="bg-slate-800/90 hover:bg-slate-700 text-white border-slate-700 text-xs font-semibold py-2.5 flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <FileTextIcon className="w-3.5 h-3.5 text-sky-400" />
+            <span>{pdfGeneratingType === 'combined' ? 'Generating...' : 'Combined Report (PDF)'}</span>
+          </MotionButton>
+
+          <MotionButton
+            variant="primary"
+            size="sm"
+            onClick={() => setIsShareModalOpen(true)}
+            className="bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold py-2.5 flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+          >
+            <Share2 className="w-3.5 h-3.5 text-white" />
+            <span>Share My Result</span>
+          </MotionButton>
+        </div>
+      </div>
 
       {/* Summary KPI Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
@@ -400,6 +593,13 @@ export default function JeeReviewLock({
         </div>
       </div>
 
+      {/* Universal Share Result Modal */}
+      <ShareResultModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        cardData={socialCardData}
+      />
+
       {/* Practice Choice Locking Confirmation Modal */}
       {showConfirmModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
@@ -477,22 +677,24 @@ export default function JeeReviewLock({
       {lockedSession && <Confetti />}
 
       {/* Action Navigation Footer */}
-      <div className="flex justify-between items-center border-t border-slate-200 pt-5">
+      <div className="flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3 border-t border-slate-200 pt-5">
         <MotionButton
           variant="secondary"
           size="md"
           onClick={onBack}
           leftIcon={<ArrowLeft className="w-4 h-4" />}
+          className="w-full sm:w-auto"
         >
           Back to Choice Filling
         </MotionButton>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           {onOpenLearningCentre && (
             <MotionButton
               variant="secondary"
               size="sm"
               onClick={onOpenLearningCentre}
               leftIcon={<HelpCircle className="w-4 h-4 text-indigo-600" />}
+              className="w-full sm:w-auto"
             >
               Learn Freeze/Float/Slide
             </MotionButton>
@@ -504,6 +706,7 @@ export default function JeeReviewLock({
               onClick={handleDownloadPdf}
               shimmer
               leftIcon={<Download className="w-4 h-4" />}
+              className="w-full sm:w-auto"
             >
               Download Locked Slip
             </MotionButton>
@@ -514,6 +717,7 @@ export default function JeeReviewLock({
               onClick={() => setShowConfirmModal(true)}
               shimmer
               leftIcon={<Lock className="w-4 h-4" />}
+              className="w-full sm:w-auto"
             >
               Lock Practice Choices
             </MotionButton>

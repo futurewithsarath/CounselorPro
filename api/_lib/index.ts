@@ -1,6 +1,7 @@
 import { initializeApp, cert, getApps, getApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { GoogleGenAI } from "@google/genai";
+import crypto from "node:crypto";
 
 export function getServiceAccount() {
   const projectId = process.env.FIREBASE_PROJECT_ID;
@@ -157,6 +158,48 @@ export function checkServerlessRateLimit(ip: string, limit: number = 10, windowM
   return { allowed: true, remaining: limit - entry.count };
 }
 
+/**
+ * Serverless persistent rate limiter using Firestore '_rate_limits' collection.
+ * Survives across cold-starts and multiple lambda instances.
+ * Falls back safely to in-memory sliding window if Firestore is unconfigured or unreachable.
+ */
+export async function checkRateLimit(
+  key: string,
+  limit: number = 10,
+  windowMs: number = 60000
+): Promise<{ allowed: boolean; remaining: number }> {
+  const db = getFirestoreDb();
+  if (db && !firestoreUnavailable) {
+    try {
+      const now = Date.now();
+      const bucket = Math.floor(now / windowMs);
+      const safeKey = crypto.createHash("sha256").update(key).digest("hex").slice(0, 32);
+      const docId = `rl_${safeKey}_${bucket}`;
+      const docRef = db.collection("_rate_limits").doc(docId);
+
+      await docRef.set(
+        {
+          key,
+          count: FieldValue.increment(1),
+          expiresAt: new Date(now + windowMs * 2)
+        },
+        { merge: true }
+      );
+
+      const snap = await docRef.get();
+      const currentCount = snap.data()?.count || 1;
+      if (currentCount > limit) {
+        return { allowed: false, remaining: 0 };
+      }
+      return { allowed: true, remaining: Math.max(0, limit - currentCount) };
+    } catch (err: any) {
+      console.warn("[RATE LIMIT] Firestore check failed; falling back to in-memory limiter:", err?.message || err);
+    }
+  }
+
+  return checkServerlessRateLimit(key, limit, windowMs);
+}
+
 // Validation constants
 export const ALLOWED_EXAM_GROUPS = new Set([
   "TS_EAPCET_BIPC",
@@ -297,12 +340,18 @@ export function validateProfileAndOptions(profile: any, options: any): { valid: 
 
 // AI Client
 let aiClient: GoogleGenAI | null = null;
-const apiKey = process.env.GEMINI_API_KEY;
 
 export function getAIClient(): GoogleGenAI {
+  const currentApiKey = process.env.GEMINI_API_KEY;
+  if (!currentApiKey) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("GEMINI_API_KEY environment variable is not configured in production.");
+    }
+  }
+
   if (!aiClient) {
     aiClient = new GoogleGenAI({
-      apiKey: apiKey || "MOCK_KEY_FALLBACK",
+      apiKey: currentApiKey || "MOCK_KEY_FALLBACK",
       httpOptions: {
         headers: {
           'User-Agent': 'aistudio-build',

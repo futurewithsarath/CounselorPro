@@ -18,10 +18,19 @@ import {
   Copy,
   MessageCircle,
   Send,
-  Heart
+  Heart,
+  FileText
 } from 'lucide-react';
 import { StudentProfile, WebOption, MockAllotmentResult, College } from '../types';
 import { COLLEGES_DB, COLLEGES_DATASET_METADATA, COLLEGES_SOURCE_YEAR, getCollegeCutoff, getEligibleCutoff, getSeatProbability, isCollegeAvailableToGender, hasLocalAreaCutoffs } from '../data/colleges';
+import { 
+  generatePreferenceListPdf, 
+  generateMockResultPdf, 
+  generateCombinedReportPdf, 
+  UniversalPdfOptions 
+} from '../utils/universalPdfService';
+import ShareResultModal from './ShareResultModal';
+import { SocialCardData } from '../utils/socialCardGenerator';
 import MotionButton from './ui/MotionButton';
 import Confetti from './ui/Confetti';
 
@@ -47,6 +56,8 @@ export default function SuccessScreen({ profile, selectedOptions, optionsLength,
   const [alternatives, setAlternatives] = useState<College[]>([]);
   const [copied, setCopied] = useState<boolean>(false);
   const [linkCopied, setLinkCopied] = useState<boolean>(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
   const sourceLabel = COLLEGES_DATASET_METADATA?.sourceTitle && COLLEGES_SOURCE_YEAR
     ? `${COLLEGES_DATASET_METADATA.sourceTitle} (${COLLEGES_SOURCE_YEAR})`
     : 'No verified historical dataset';
@@ -131,56 +142,106 @@ export default function SuccessScreen({ profile, selectedOptions, optionsLength,
     document.body.removeChild(element);
   };
 
-  const handleDownloadOptionsPdf = async () => {
-    const [{ jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    doc.setFillColor(15, 23, 42);
-    doc.rect(0, 0, pageWidth, 6, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.setTextColor(15, 23, 42);
-    doc.text('CounselorPro Practice List', 15, 20);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.setTextColor(71, 85, 105);
-    doc.text(`Exam: ${profile.exam} (${profile.stream})  |  Historical dataset: ${sourceLabel}`, 15, 28);
-    doc.text(`Rank: ${profile.rank.toLocaleString()}  |  Category: ${profile.category}  |  Gender: ${profile.gender}${hasLocalAreaCutoffs() ? `  |  Local area: ${profile.region}` : '  |  No local-area split reported'}`, 15, 34);
-    doc.text(`Historical cutoff comparison: ${allotment?.allotted && allotment.college ? `Option #${allotment.optionNumber} - ${allotment.college.code} / ${allotment.college.branch}` : 'No match in selected options'}`, 15, 40);
-
-    const rows = selectedOptions.map(option => {
+  // Construct Universal PDF Options Payload
+  const getUniversalPdfPayload = (): UniversalPdfOptions => {
+    const choices = selectedOptions.map(option => {
       const college = COLLEGES_DB.find(item => item.id === option.collegeId);
       const cutoff = college ? getEligibleCutoff(college, profile.category, profile.gender, profile.region) : null;
-      return [String(option.priority), option.collegeCode, option.collegeName, option.branchName || option.branch, cutoff?.toLocaleString() ?? 'Not reported'];
-    });
-    autoTable(doc, {
-      startY: 48,
-      margin: { left: 15, right: 15 },
-      head: [['Priority', 'Code', 'College', 'Branch', `Applicable ${COLLEGES_SOURCE_YEAR ?? 'historical'} last rank`]],
-      body: rows,
-      styles: { fontSize: 8, cellPadding: 2.5, overflow: 'linebreak' },
-      headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255] },
-      columnStyles: { 0: { cellWidth: 16 }, 1: { cellWidth: 22 }, 3: { cellWidth: 24 }, 4: { cellWidth: 37 } },
+      const prob = college ? getSeatProbability(college, profile.rank, profile.category, profile.gender, profile.region) : null;
+      return {
+        priority: option.priority,
+        code: option.collegeCode,
+        name: option.collegeName,
+        branchOrProgram: option.branchName || option.branch,
+        districtOrState: college ? `${college.district} (${college.region})` : 'Statewide',
+        authority: profile.exam === 'AP_EAPCET' ? 'APSCHE (AP EAPCET)' : 'TGCHE (TG EAPCET)',
+        fee: option.fee,
+        historicalCutoff: cutoff ?? 'Not reported',
+        probability: prob ? `${prob} Range` : null
+      };
     });
 
-    let footerY = (doc as any).lastAutoTable.finalY + 9;
-    const pageHeight = doc.internal.pageSize.getHeight();
-    if (footerY + 12 > pageHeight - 18) {
-      doc.addPage();
-      footerY = 20;
+    const mockResult = allotment?.allotted && allotment.college ? {
+      allotted: true,
+      collegeName: allotment.college.name,
+      collegeCode: allotment.college.code,
+      branchName: allotment.college.branch,
+      preferenceNumber: allotment.optionNumber,
+      allotmentType: allotment.allotmentType,
+      fee: allotment.college.fee,
+      probabilityRange: getSeatProbability(allotment.college, profile.rank, profile.category, profile.gender, profile.region),
+      cutoffBasis: hasLocalAreaCutoffs() ? `${profile.region} Local Area Pool` : 'Statewide Pool'
+    } : {
+      allotted: false
+    };
+
+    return {
+      profile: {
+        exam: profile.exam || 'AP_EAPCET',
+        stream: profile.stream || 'MPC',
+        rank: profile.rank,
+        category: profile.category,
+        gender: profile.gender,
+        domicileOrRegion: profile.region,
+        localArea: profile.region
+      },
+      choices,
+      mockResult,
+      datasetTitle: sourceLabel
+    };
+  };
+
+  // 1. Download Complete Preference List PDF
+  const handleDownloadCompletePreferencePdf = async () => {
+    try {
+      setIsExportingPdf(true);
+      await generatePreferenceListPdf(getUniversalPdfPayload());
+    } catch (err: any) {
+      console.error('Failed to export preference PDF:', err);
+      alert(err?.message || 'Failed to download complete preference list PDF.');
+    } finally {
+      setIsExportingPdf(false);
     }
-    doc.setFontSize(8);
-    doc.setTextColor(100, 116, 139);
-    doc.text('Practice copy only. Historical final-counselling last ranks do not guarantee a future seat.', 15, footerY);
-    doc.text('Tuition fees are not included in the uploaded cutoff PDF.', 15, footerY + 5);
-    const pageCount = doc.getNumberOfPages();
-    for (let page = 1; page <= pageCount; page++) {
-      doc.setPage(page);
-      doc.setFontSize(7);
-      doc.setTextColor(148, 163, 184);
-      doc.text(`Page ${page} of ${pageCount} • CounselorPro practice copy`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+  };
+
+  // 2. Download Mock Allotment Result PDF
+  const handleDownloadMockResultPdf = async () => {
+    try {
+      setIsExportingPdf(true);
+      await generateMockResultPdf(getUniversalPdfPayload());
+    } catch (err: any) {
+      console.error('Failed to export mock result PDF:', err);
+      alert(err?.message || 'Failed to download mock result PDF.');
+    } finally {
+      setIsExportingPdf(false);
     }
-    doc.save(`CounselorPro_${profile.exam}_${profile.stream}_Practice_List.pdf`);
+  };
+
+  // 3. Download Complete Counselling Report PDF
+  const handleDownloadCombinedReportPdf = async () => {
+    try {
+      setIsExportingPdf(true);
+      await generateCombinedReportPdf(getUniversalPdfPayload());
+    } catch (err: any) {
+      console.error('Failed to export combined report PDF:', err);
+      alert(err?.message || 'Failed to download complete counselling report PDF.');
+    } finally {
+      setIsExportingPdf(false);
+    }
+  };
+
+  const socialCardData: SocialCardData = {
+    exam: String(profile.exam || 'AP_EAPCET'),
+    stream: profile.stream || 'MPC',
+    rank: profile.rank,
+    category: profile.category,
+    totalChoices: selectedOptions.length,
+    allotted: Boolean(allotment?.allotted),
+    collegeName: allotment?.college?.name,
+    collegeCode: allotment?.college?.code,
+    branchName: allotment?.college?.branch,
+    preferenceNumber: allotment?.optionNumber,
+    probabilityRange: allotment?.college ? getSeatProbability(allotment.college, profile.rank, profile.category, profile.gender, profile.region) : undefined
   };
 
   // Copy structured text summary to clipboard or share using Web Share API
@@ -582,37 +643,89 @@ export default function SuccessScreen({ profile, selectedOptions, optionsLength,
         </div>
       </div>
 
-      {/* Action triggers */}
+      {/* Universal Download & Result Sharing Command Hub */}
+      <div className="bg-white border-2 border-emerald-600/20 rounded-2xl p-6 shadow-sm space-y-4 mb-8" id="download-and-share-hub">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div>
+            <h4 className="font-sans font-black text-slate-900 text-base flex items-center gap-2">
+              <Download className="w-5 h-5 text-emerald-600" />
+              Download Official Practice Documents & Share
+            </h4>
+            <p className="text-slate-500 text-xs">
+              Export academic-grade printable PDFs of your choices or generate social media result cards.
+            </p>
+          </div>
+          <span className="text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full uppercase">
+            All Formats Supported
+          </span>
+        </div>
+
+        {/* 4 Core Actions Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+          {/* Action 1: Complete Preference List PDF */}
+          <MotionButton
+            variant="primary"
+            size="md"
+            onClick={handleDownloadCompletePreferencePdf}
+            leftIcon={<Download className="w-4 h-4" />}
+            disabled={isExportingPdf}
+            shimmer
+            className="w-full text-xs font-bold"
+            title="Download every prioritized college in exact preference sequence"
+          >
+            Preference List (PDF)
+          </MotionButton>
+
+          {/* Action 2: Mock Result Slip PDF */}
+          <MotionButton
+            variant="secondary"
+            size="md"
+            onClick={handleDownloadMockResultPdf}
+            leftIcon={<Award className="w-4 h-4 text-emerald-600" />}
+            disabled={isExportingPdf}
+            className="w-full text-xs font-bold"
+            title="Download official mock allotment practice result slip"
+          >
+            Mock Result (PDF)
+          </MotionButton>
+
+          {/* Action 3: Combined Complete Counselling Report PDF */}
+          <MotionButton
+            variant="secondary"
+            size="md"
+            onClick={handleDownloadCombinedReportPdf}
+            leftIcon={<FileText className="w-4 h-4 text-slate-600" />}
+            disabled={isExportingPdf}
+            className="w-full text-xs font-bold"
+            title="Download multi-page combined counselling analysis with full preference matrix"
+          >
+            Combined Report (PDF)
+          </MotionButton>
+
+          {/* Action 4: Share My Result Modal */}
+          <MotionButton
+            variant="primary"
+            size="md"
+            onClick={() => setIsShareModalOpen(true)}
+            leftIcon={<Share2 className="w-4 h-4" />}
+            className="w-full text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white"
+            title="Share via WhatsApp, Telegram, or export Instagram Story & Post cards"
+          >
+            Share My Result
+          </MotionButton>
+        </div>
+      </div>
+
+      {/* Auxiliary action triggers */}
       <div className="flex flex-col sm:flex-row justify-center items-center gap-3">
-        <MotionButton
-          variant="primary"
-          size="md"
-          onClick={handleDownloadOptionsPdf}
-          leftIcon={<Download className="w-4 h-4" />}
-          shimmer
-          className="w-full sm:w-auto"
-        >
-          Download Practice List PDF
-        </MotionButton>
         <MotionButton
           variant="secondary"
           size="md"
           onClick={handleDownloadRegisteredSummary}
           leftIcon={<Download className="w-4 h-4 text-slate-500" />}
-          className="w-full sm:w-auto"
+          className="w-full sm:w-auto text-xs"
         >
-          Download Summary
-        </MotionButton>
-
-        {/* Share Result Snippet Trigger */}
-        <MotionButton
-          variant="secondary"
-          size="md"
-          onClick={handleShareSimulationResult}
-          leftIcon={copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Share2 className="w-4 h-4 text-slate-500" />}
-          className="w-full sm:w-auto"
-        >
-          {copied ? 'Copied!' : 'Share Result'}
+          Download Summary (.txt)
         </MotionButton>
 
         <MotionButton
@@ -621,15 +734,22 @@ export default function SuccessScreen({ profile, selectedOptions, optionsLength,
           onClick={onReset}
           leftIcon={<RefreshCw className="w-4 h-4" />}
           shimmer
-          className="w-full sm:w-auto font-bold"
+          className="w-full sm:w-auto font-bold text-xs"
         >
           Practice Again
         </MotionButton>
       </div>
 
+      {/* Social Sharing Modal Component */}
+      <ShareResultModal 
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        cardData={socialCardData}
+      />
+
       {/* Share feedback reminder */}
-      <div className="mt-8 text-xs text-slate-400 flex items-center justify-center gap-1.5">
-        <Compass className="w-4 h-4 text-slate-300" />
+      <div className="mt-8 text-xs text-slate-400 flex items-center justify-center gap-2">
+        <img src="/logo.png" alt="CounselorPro" className="w-4 h-4 object-contain rounded-xs" />
         <span>CounselorPro Simulator, built to maximize admissions safety.</span>
       </div>
     </div>

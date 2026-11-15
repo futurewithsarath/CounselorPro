@@ -4,37 +4,75 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import LandingPage from './components/LandingPage';
 import ExamSelector from './components/ExamSelector';
 import ProfileForm from './components/ProfileForm';
-import OptionEntry from './components/OptionEntry';
-import ChoiceRefinement from './components/ChoiceRefinement';
-import FinalReview from './components/FinalReview';
-import ComingSoon from './components/ComingSoon';
-import JeeProfileForm from './components/jee/JeeProfileForm';
-import JeeOptionEntry from './components/jee/JeeOptionEntry';
-import JeeReviewLock from './components/jee/JeeReviewLock';
-import JeeLearningCentre from './components/jee/JeeLearningCentre';
-import NeetProfileForm from './components/neet/NeetProfileForm';
-import NeetOptionEntry from './components/neet/NeetOptionEntry';
-import NeetReviewLock from './components/neet/NeetReviewLock';
-import NeetLearningCentre from './components/neet/NeetLearningCentre';
 import MotionButton from './components/ui/MotionButton';
 
+const OptionEntry = React.lazy(() => import('./components/OptionEntry'));
+const ChoiceRefinement = React.lazy(() => import('./components/ChoiceRefinement'));
+const FinalReview = React.lazy(() => import('./components/FinalReview'));
+const ComingSoon = React.lazy(() => import('./components/ComingSoon'));
+const JeeProfileForm = React.lazy(() => import('./components/jee/JeeProfileForm'));
+const JeeOptionEntry = React.lazy(() => import('./components/jee/JeeOptionEntry'));
+const JeeReviewLock = React.lazy(() => import('./components/jee/JeeReviewLock'));
+const JeeLearningCentre = React.lazy(() => import('./components/jee/JeeLearningCentre'));
+const NeetProfileForm = React.lazy(() => import('./components/neet/NeetProfileForm'));
+const NeetOptionEntry = React.lazy(() => import('./components/neet/NeetOptionEntry'));
+const NeetReviewLock = React.lazy(() => import('./components/neet/NeetReviewLock'));
+const NeetLearningCentre = React.lazy(() => import('./components/neet/NeetLearningCentre'));
 const SuccessScreen = React.lazy(() => import('./components/SuccessScreen'));
-const AdminModal = React.lazy(() => import('./components/AdminModal'));
+const AdminRouteGuard = React.lazy(() => import('./components/admin/AdminRouteGuard'));
+const SharedResultView = React.lazy(() => import('./components/SharedResultView'));
+import AuthModal from './components/auth/AuthModal';
+import UserNav from './components/auth/UserNav';
+import { useAuth } from './context/AuthContext';
 
 import { StudentProfile, WebOption, ExamType, JeeStudentProfile, JeePracticeChoice, NeetStudentProfile, NeetChoice } from './types';
 import { Compass, Sparkles, CheckCircle, GraduationCap, Database, Save, RefreshCw, BookOpen, Stethoscope } from 'lucide-react';
 import { loadRealCollegesForExam, COLLEGES_SOURCE, getDefaultDatasetYear } from './data/colleges';
-import { NEET_COLLEGES_CATALOG } from './data/neetCatalog';
 
 type StepType = 'LANDING' | 'SELECT_EXAM' | 'ENTER_DETAILS' | 'ENTRY_WORKFLOW' | 'REFINEMENT' | 'FINAL_REVIEW' | 'SUCCESS' | 'COMING_SOON';
+
+function StepLoadingFallback() {
+  return (
+    <div className="flex-grow flex flex-col items-center justify-center py-24 px-4 min-h-[50vh]">
+      <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center mb-3 shadow-xs">
+        <div className="w-5 h-5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+      <p className="text-sm font-semibold text-slate-700 tracking-tight">Loading Counselling Module...</p>
+      <p className="text-xs text-slate-400 mt-1 font-mono">Preparing verified colleges & cutoffs</p>
+    </div>
+  );
+}
 
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const prefersReducedMotion = useReducedMotion();
+  const {
+    user,
+    userProfile,
+    isSuperAdmin,
+    isLoading: authLoading,
+    openAuthModal,
+    intendedDestination,
+    clearIntendedDestination
+  } = useAuth();
 
-  // Administrative DB setup check based on URL path
-  const isAdminOpen = location.pathname === '/admin';
+  // Strict Administrative Route Detection (matches /admin, /admin/, and all nested subpaths)
+  const isAdminRoute = location.pathname === '/admin' || location.pathname.startsWith('/admin/');
+
+  // Check for shared result URL query parameter (?share=...)
+  const searchParams = new URLSearchParams(location.search);
+  const shareParam = searchParams.get('share');
+  const sharedData = useMemo(() => {
+    if (!shareParam) return null;
+    try {
+      const decoded = atob(decodeURIComponent(shareParam));
+      return JSON.parse(decoded);
+    } catch (e) {
+      console.error('Failed to parse share data:', e);
+      return null;
+    }
+  }, [shareParam]);
 
   // Dynamic DB Status state
   const [dbStatus, setDbStatus] = useState<{ loaded: boolean; count: number; source: string }>({
@@ -51,7 +89,7 @@ export default function App() {
     if (saved === 'REFINEMENT') return 'ENTRY_WORKFLOW';
     return (saved as StepType) || 'LANDING';
   });
-  
+
   const [profile, setProfile] = useState<StudentProfile>(() => {
     const saved = localStorage.getItem('counselor_profile');
     if (saved) {
@@ -190,10 +228,12 @@ export default function App() {
     }
 
     if (profile.exam === 'NEET_UG') {
-      setDbStatus({
-        loaded: true,
-        count: NEET_COLLEGES_CATALOG.length,
-        source: `${NEET_COLLEGES_CATALOG.length} Verified NEET Medical & AYUSH Records (MCC, YSRUHS, KNRUHS, AACCC)`
+      import('./data/neetCatalog').then(m => {
+        setDbStatus({
+          loaded: true,
+          count: m.NEET_COLLEGES_CATALOG.length,
+          source: `${m.NEET_COLLEGES_CATALOG.length} Verified NEET Medical & AYUSH Records (MCC, YSRUHS, KNRUHS, AACCC)`
+        });
       });
       return;
     }
@@ -235,7 +275,38 @@ export default function App() {
   useLayoutEffect(() => {
     const frame = window.requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }));
     return () => window.cancelAnimationFrame(frame);
-  }, [step, isAdminOpen]);
+  }, [step, isAdminRoute]);
+
+  // CRITICAL SECURITY & PRODUCT GUARD: Login Required for Counselling Practice
+  useEffect(() => {
+    const practiceSteps: StepType[] = ['ENTER_DETAILS', 'ENTRY_WORKFLOW', 'FINAL_REVIEW', 'SUCCESS'];
+    if (practiceSteps.includes(step) && !user && !authLoading) {
+      openAuthModal('login', 'Please log in to start your counselling practice.', {
+        step,
+        exam: profile.exam,
+        stream: profile.stream
+      });
+      setStep('SELECT_EXAM');
+    }
+  }, [step, user, authLoading, profile.exam, profile.stream, openAuthModal]);
+
+  // RESTORE INTENDED MODULE & RESUME PRACTICE AFTER LOGIN
+  useEffect(() => {
+    if (user && intendedDestination) {
+      if (intendedDestination.exam) {
+        handleSelectExam(intendedDestination.exam);
+      }
+      if (intendedDestination.stream) {
+        setProfile(p => ({ ...p, stream: intendedDestination.stream }));
+      }
+      if (intendedDestination.step) {
+        setStep(intendedDestination.step as StepType);
+      } else {
+        setStep('ENTER_DETAILS');
+      }
+      clearIntendedDestination();
+    }
+  }, [user, intendedDestination, clearIntendedDestination]);
 
   // Form State and Wizard Step change sync
   useEffect(() => {
@@ -340,7 +411,7 @@ export default function App() {
 
   // Step indicator details
   const getStepNumber = (currentStep: StepType): number => {
-    switch(currentStep) {
+    switch (currentStep) {
       case 'SELECT_EXAM': return 1;
       case 'ENTER_DETAILS': return 2;
       case 'ENTRY_WORKFLOW': return 3;
@@ -435,26 +506,60 @@ export default function App() {
     });
   }, [profile.exam]);
 
+  if (sharedData) {
+    return (
+      <React.Suspense fallback={<div className="min-h-screen flex items-center justify-center font-mono text-slate-500">Loading shared result...</div>}>
+        <SharedResultView
+          data={sharedData}
+          onNavigateHome={() => {
+            navigate('/', { replace: true });
+            window.location.search = '';
+          }}
+        />
+      </React.Suspense>
+    );
+  }
+
+  if (isAdminRoute) {
+    return (
+      <React.Suspense fallback={
+        <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center">
+          <div className="flex items-center gap-2 text-slate-300 font-medium text-xs font-mono">
+            <RefreshCw className="w-4 h-4 animate-spin text-emerald-400" />
+            Initializing Security Sandbox...
+          </div>
+        </div>
+      }>
+        <AdminRouteGuard />
+        <AuthModal />
+      </React.Suspense>
+    );
+  }
+
   return (
     <div className="min-h-[100dvh] bg-slate-50 text-slate-900 flex flex-col font-sans" id="app-root">
-      
+
       {/* Dynamic Header when inside active counselling wizard or completion screen */}
       {step !== 'LANDING' && (
-        <header className="border-b border-slate-200 bg-white sticky top-0 z-50 px-4 sm:px-6 py-2.5 sm:py-3.5 shadow-xs">
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
-            <motion.div 
+        <header className="border-b border-slate-200 bg-white sticky top-0 z-50 px-2.5 sm:px-6 py-2 sm:py-3.5 shadow-xs">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-3">
+            <motion.div
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
-              className="flex items-center gap-2 cursor-pointer min-w-0 shrink-0 select-none" 
+              className="flex items-center gap-1.5 sm:gap-2 cursor-pointer min-w-0 shrink-0 select-none"
               onClick={resetSimulation}
             >
-              <div className="p-1.5 bg-emerald-600 text-white rounded-lg shrink-0 shadow-xs">
-                <Compass className="w-5 h-5" />
-              </div>
-              <span className="font-sans font-extrabold text-slate-900 tracking-tight text-base sm:text-lg truncate">CounselorPro</span>
+              <img
+                src="/logo.png"
+                alt="CounselorPro"
+                className="w-7 h-7 sm:w-8 sm:h-8 object-contain rounded-lg shrink-0 drop-shadow-xs"
+              />
+              <span className="font-sans font-extrabold text-slate-900 tracking-tight text-sm sm:text-lg truncate">
+                Counselor<span className="text-emerald-600">Pro</span>
+              </span>
             </motion.div>
 
-            <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
               {/* Wizard Progress bar */}
               {currentStepNum > 0 && (
                 <div className="hidden md:flex items-center gap-4 w-full sm:w-auto max-w-md">
@@ -462,7 +567,7 @@ export default function App() {
                     STEP {currentStepNum} OF {totalSteps}
                   </span>
                   <div className="relative w-full sm:w-48 bg-slate-200 h-2 rounded-full overflow-hidden">
-                    <motion.div 
+                    <motion.div
                       className="absolute left-0 top-0 bg-emerald-600 h-full rounded-full"
                       initial={{ width: 0 }}
                       animate={{ width: `${(currentStepNum / totalSteps) * 100}%` }}
@@ -475,19 +580,23 @@ export default function App() {
                 </div>
               )}
 
-              {currentStepNum > 0 && <span className="md:hidden text-[9px] font-mono font-bold text-slate-500 whitespace-nowrap">{currentStepNum}/{totalSteps}</span>}
+              {currentStepNum > 0 && (
+                <span className="md:hidden text-[10px] font-mono font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded whitespace-nowrap">
+                  {currentStepNum}/{totalSteps}
+                </span>
+              )}
 
               {loadingColleges ? (
-                <div className="hidden min-[360px]:flex items-center gap-1 px-2 py-1.5 text-slate-500 rounded-lg text-[10px] font-semibold font-mono" aria-live="polite">
-                  <RefreshCw className="h-3 w-3 animate-spin" /> Loading data
+                <div className="hidden min-[360px]:flex items-center gap-1 px-1.5 py-1 text-slate-500 rounded-lg text-[9px] sm:text-[10px] font-semibold font-mono" aria-live="polite">
+                  <RefreshCw className="h-3 w-3 animate-spin" /> Loading
                 </div>
               ) : dbStatus.loaded ? (
-                <div className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-3 py-1.5 bg-emerald-50 text-emerald-800 rounded-lg text-[9px] sm:text-xs font-semibold font-mono border border-emerald-100 shadow-2xs whitespace-nowrap">
-                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span className="hidden sm:inline">VERIFIED DATA: </span>{dbStatus.count.toLocaleString()} <span className="hidden sm:inline">COURSES</span>
+                <div className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2.5 py-1 sm:py-1.5 bg-emerald-50 text-emerald-800 rounded-lg text-[9px] sm:text-xs font-semibold font-mono border border-emerald-100 shadow-2xs whitespace-nowrap">
+                  <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span className="hidden sm:inline">VERIFIED DATA: </span>{dbStatus.count.toLocaleString()} <span className="hidden min-[400px]:inline">COURSES</span>
                 </div>
               ) : (
-                <div className="flex items-center gap-1.5 px-1.5 sm:px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg text-[9px] sm:text-xs font-semibold font-mono border border-amber-100 whitespace-nowrap">
+                <div className="flex items-center gap-1 px-1.5 sm:px-2.5 py-1 sm:py-1.5 bg-amber-50 text-amber-700 rounded-lg text-[9px] sm:text-xs font-semibold font-mono border border-amber-100 whitespace-nowrap">
                   {profile.exam ? <><span className="hidden sm:inline">NO VERIFIED DATA</span><span className="sm:hidden">NO DATA</span></> : <span className="hidden sm:inline">SELECT AN EXAM</span>}
                 </div>
               )}
@@ -498,7 +607,7 @@ export default function App() {
                   size="sm"
                   onClick={() => setIsJeeLearningOpen(true)}
                   leftIcon={<BookOpen className="w-3.5 h-3.5" />}
-                  className="!rounded-lg !py-1.5 !px-2.5 !text-[10px] sm:!text-xs font-mono font-bold"
+                  className="!rounded-lg !py-1 sm:!py-1.5 !px-2 sm:!px-2.5 !text-[10px] sm:!text-xs font-mono font-bold"
                   title="Open Freeze, Float & Slide Educational Guide"
                 >
                   <span className="hidden sm:inline">RULE GUIDE</span>
@@ -511,24 +620,22 @@ export default function App() {
                   size="sm"
                   onClick={handleSaveDraft}
                   leftIcon={<Save className="w-3.5 h-3.5" />}
-                  className="!rounded-lg !py-1.5 !px-2.5 !text-[10px] sm:!text-xs font-mono font-bold"
+                  className="!rounded-lg !py-1 sm:!py-1.5 !px-2 sm:!px-2.5 !text-[10px] sm:!text-xs font-mono font-bold"
                   title="Save Current Draft"
                   shimmer
                 >
                   <span className="hidden sm:inline">SAVE DRAFT</span>
                 </MotionButton>
               )}
+
+              <UserNav />
             </div>
           </div>
         </header>
       )}
 
       {/* Main content viewport */}
-      <div 
-        className="flex-grow flex flex-col"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
+      <main className="flex-grow flex flex-col w-full relative">
         <AnimatePresence mode="wait">
           <motion.div
             key={step}
@@ -536,142 +643,142 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={prefersReducedMotion ? undefined : { opacity: 0, y: -10 }}
             transition={{ duration: prefersReducedMotion ? 0 : 0.25, ease: 'easeOut' }}
-            className="flex-grow flex flex-col"
+            className="flex-grow flex flex-col w-full"
           >
-            {step === 'LANDING' && (
-              <LandingPage 
-                onStart={() => setStep('SELECT_EXAM')} 
-              />
-            )}
-
-            {step === 'SELECT_EXAM' && (
-              <ExamSelector
-                selectedExam={profile.exam}
-                selectedStream={profile.stream || 'MPC'}
-                onSelect={handleSelectExam}
-                onSelectStream={(stream) => {
-                  if (profile.stream !== stream) setSelectedOptions([]);
-                  setProfile(prev => ({
-                    ...prev,
-                    stream,
-                    category: (prev.exam === 'AP_EAPCET' && stream === 'BiPC') && ['SC-I', 'SC-II', 'SC-III'].includes(prev.category)
-                      ? 'SC'
-                      : (prev.exam === 'TS_EAMCET' || stream === 'MPC') && prev.category === 'SC'
-                        ? 'SC-I'
-                        : prev.category,
-                  }));
-                }}
-                onNext={() => {
-                  setStep('ENTER_DETAILS');
-                }}
-                onBack={() => setStep('LANDING')}
-              />
-            )}
-
-            {step === 'COMING_SOON' && (
-              <ComingSoon
-                onBack={() => setStep('SELECT_EXAM')}
-              />
-            )}
-
-            {step === 'ENTER_DETAILS' && (
-              profile.exam === 'JEE_MAIN' ? (
-                <JeeProfileForm
-                  profile={jeeProfile}
-                  onChange={setJeeProfile}
-                  onNext={() => setStep('ENTRY_WORKFLOW')}
-                  onBack={() => setStep('SELECT_EXAM')}
-                  onOpenLearningCentre={() => setIsJeeLearningOpen(true)}
+            <React.Suspense fallback={<StepLoadingFallback />}>
+              {step === 'LANDING' && (
+                <LandingPage
+                  onStart={() => setStep('SELECT_EXAM')}
                 />
-              ) : profile.exam === 'NEET_UG' ? (
-                <NeetProfileForm
-                  profile={neetProfile}
-                  onChange={setNeetProfile}
-                  onNext={() => setStep('ENTRY_WORKFLOW')}
-                  onBack={() => setStep('SELECT_EXAM')}
-                  onOpenLearningCentre={() => setIsNeetLearningOpen(true)}
+              )}
+
+              {step === 'SELECT_EXAM' && (
+                <ExamSelector
+                  selectedExam={profile.exam}
+                  selectedStream={profile.stream || 'MPC'}
+                  onSelect={handleSelectExam}
+                  onSelectStream={(stream) => {
+                    if (profile.stream !== stream) setSelectedOptions([]);
+                    setProfile(prev => ({
+                      ...prev,
+                      stream,
+                      category: (prev.exam === 'AP_EAPCET' && stream === 'BiPC') && ['SC-I', 'SC-II', 'SC-III'].includes(prev.category)
+                        ? 'SC'
+                        : (prev.exam === 'TS_EAMCET' || stream === 'MPC') && prev.category === 'SC'
+                          ? 'SC-I'
+                          : prev.category,
+                    }));
+                  }}
+                  onNext={() => {
+                    setStep('ENTER_DETAILS');
+                  }}
+                  onBack={() => setStep('LANDING')}
                 />
-              ) : (
-                <ProfileForm
-                  exam={profile.exam || 'TS_EAMCET'}
-                  profile={profile}
-                  onChange={setProfile}
-                  onNext={() => setStep('ENTRY_WORKFLOW')}
+              )}
+
+              {step === 'COMING_SOON' && (
+                <ComingSoon
                   onBack={() => setStep('SELECT_EXAM')}
                 />
-              )
-            )}
+              )}
 
-            {step === 'ENTRY_WORKFLOW' && (
-              profile.exam === 'JEE_MAIN' ? (
-                <JeeOptionEntry
-                  profile={jeeProfile}
-                  selectedChoices={jeeChoices}
-                  onUpdateChoices={setJeeChoices}
-                  onNext={() => setStep('FINAL_REVIEW')}
-                  onBack={() => setStep('ENTER_DETAILS')}
-                  onOpenLearningCentre={() => setIsJeeLearningOpen(true)}
-                />
-              ) : profile.exam === 'NEET_UG' ? (
-                <NeetOptionEntry
-                  profile={neetProfile}
-                  selectedChoices={neetChoices}
-                  onUpdateChoices={setNeetChoices}
-                  onNext={() => setStep('FINAL_REVIEW')}
-                  onBack={() => setStep('ENTER_DETAILS')}
-                  onOpenLearningCentre={() => setIsNeetLearningOpen(true)}
-                />
-              ) : (
-                <OptionEntry
-                  profile={profile}
-                  selectedOptions={selectedOptions}
-                  onUpdateOptions={setSelectedOptions}
-                  onNext={() => setStep('FINAL_REVIEW')}
-                  onBack={() => setStep('ENTER_DETAILS')}
-                />
-              )
-            )}
+              {step === 'ENTER_DETAILS' && (
+                profile.exam === 'JEE_MAIN' ? (
+                  <JeeProfileForm
+                    profile={jeeProfile}
+                    onChange={setJeeProfile}
+                    onNext={() => setStep('ENTRY_WORKFLOW')}
+                    onBack={() => setStep('SELECT_EXAM')}
+                    onOpenLearningCentre={() => setIsJeeLearningOpen(true)}
+                  />
+                ) : profile.exam === 'NEET_UG' ? (
+                  <NeetProfileForm
+                    profile={neetProfile}
+                    onChange={setNeetProfile}
+                    onNext={() => setStep('ENTRY_WORKFLOW')}
+                    onBack={() => setStep('SELECT_EXAM')}
+                    onOpenLearningCentre={() => setIsNeetLearningOpen(true)}
+                  />
+                ) : (
+                  <ProfileForm
+                    exam={profile.exam || 'TS_EAMCET'}
+                    profile={profile}
+                    onChange={setProfile}
+                    onNext={() => setStep('ENTRY_WORKFLOW')}
+                    onBack={() => setStep('SELECT_EXAM')}
+                  />
+                )
+              )}
 
-            {step === 'FINAL_REVIEW' && (
-              profile.exam === 'JEE_MAIN' ? (
-                <JeeReviewLock
-                  profile={jeeProfile}
-                  choices={jeeChoices}
-                  onBack={() => setStep('ENTRY_WORKFLOW')}
-                  onUnlock={() => setStep('ENTRY_WORKFLOW')}
-                  onOpenLearningCentre={() => setIsJeeLearningOpen(true)}
-                />
-              ) : profile.exam === 'NEET_UG' ? (
-                <NeetReviewLock
-                  profile={neetProfile}
-                  choices={neetChoices}
-                  onBack={() => setStep('ENTRY_WORKFLOW')}
-                  onUnlock={() => setStep('ENTRY_WORKFLOW')}
-                  onOpenLearningCentre={() => setIsNeetLearningOpen(true)}
-                />
-              ) : (
-                <FinalReview
-                  profile={profile}
-                  selectedOptions={selectedOptions}
-                  onBack={() => setStep('ENTRY_WORKFLOW')}
-                  onFinish={() => setStep('SUCCESS')}
-                />
-              )
-            )}
+              {step === 'ENTRY_WORKFLOW' && (
+                profile.exam === 'JEE_MAIN' ? (
+                  <JeeOptionEntry
+                    profile={jeeProfile}
+                    selectedChoices={jeeChoices}
+                    onUpdateChoices={setJeeChoices}
+                    onNext={() => setStep('FINAL_REVIEW')}
+                    onBack={() => setStep('ENTER_DETAILS')}
+                    onOpenLearningCentre={() => setIsJeeLearningOpen(true)}
+                  />
+                ) : profile.exam === 'NEET_UG' ? (
+                  <NeetOptionEntry
+                    profile={neetProfile}
+                    selectedChoices={neetChoices}
+                    onUpdateChoices={setNeetChoices}
+                    onNext={() => setStep('FINAL_REVIEW')}
+                    onBack={() => setStep('ENTER_DETAILS')}
+                    onOpenLearningCentre={() => setIsNeetLearningOpen(true)}
+                  />
+                ) : (
+                  <OptionEntry
+                    profile={profile}
+                    selectedOptions={selectedOptions}
+                    onUpdateOptions={setSelectedOptions}
+                    onNext={() => setStep('FINAL_REVIEW')}
+                    onBack={() => setStep('ENTER_DETAILS')}
+                  />
+                )
+              )}
 
-            {step === 'SUCCESS' && (
-              <React.Suspense fallback={<div className="flex-grow flex items-center justify-center p-8 text-slate-500 font-semibold font-mono">Loading success details...</div>}>
+              {step === 'FINAL_REVIEW' && (
+                profile.exam === 'JEE_MAIN' ? (
+                  <JeeReviewLock
+                    profile={jeeProfile}
+                    choices={jeeChoices}
+                    onBack={() => setStep('ENTRY_WORKFLOW')}
+                    onUnlock={() => setStep('ENTRY_WORKFLOW')}
+                    onOpenLearningCentre={() => setIsJeeLearningOpen(true)}
+                  />
+                ) : profile.exam === 'NEET_UG' ? (
+                  <NeetReviewLock
+                    profile={neetProfile}
+                    choices={neetChoices}
+                    onBack={() => setStep('ENTRY_WORKFLOW')}
+                    onUnlock={() => setStep('ENTRY_WORKFLOW')}
+                    onOpenLearningCentre={() => setIsNeetLearningOpen(true)}
+                  />
+                ) : (
+                  <FinalReview
+                    profile={profile}
+                    selectedOptions={selectedOptions}
+                    onBack={() => setStep('ENTRY_WORKFLOW')}
+                    onFinish={() => setStep('SUCCESS')}
+                  />
+                )
+              )}
+
+              {step === 'SUCCESS' && (
                 <SuccessScreen
                   profile={profile}
                   selectedOptions={selectedOptions}
                   optionsLength={selectedOptions.length}
                   onReset={resetSimulation}
                 />
-              </React.Suspense>
-            )}
+              )}
+            </React.Suspense>
           </motion.div>
         </AnimatePresence>
-      </div>
+      </main>
 
       {/* Save Draft Toast Notification */}
       <AnimatePresence>
@@ -695,45 +802,34 @@ export default function App() {
 
       {/* JoSAA NIT Counselling Rules & Strategy Learning Centre Modal */}
       {isJeeLearningOpen && (
-        <JeeLearningCentre onClose={() => setIsJeeLearningOpen(false)} />
+        <React.Suspense fallback={null}>
+          <JeeLearningCentre onClose={() => setIsJeeLearningOpen(false)} />
+        </React.Suspense>
       )}
 
       {/* NEET UG Counselling Rules & Regulations Learning Centre Modal */}
-      <NeetLearningCentre 
-        isOpen={isNeetLearningOpen} 
-        onClose={() => setIsNeetLearningOpen(false)} 
-      />
+      {isNeetLearningOpen && (
+        <React.Suspense fallback={null}>
+          <NeetLearningCentre
+            isOpen={isNeetLearningOpen}
+            onClose={() => setIsNeetLearningOpen(false)}
+          />
+        </React.Suspense>
+      )}
 
 
-      
-      <React.Suspense fallback={null}>
-        <AdminModal 
-          isOpen={isAdminOpen} 
-          onClose={() => navigate('/')} 
-          onUploadSuccess={() => {
-            if (profile.exam) {
-              loadRealCollegesForExam(profile.exam, profile.stream || 'MPC', getDefaultDatasetYear(profile.exam, profile.stream || 'MPC')).then(count => {
-                if (count > 0) {
-                  setDbStatus({
-                    loaded: true,
-                    count,
-                    source: COLLEGES_SOURCE
-                  });
-                }
-              });
-            }
-          }}
-        />
-      </React.Suspense>
+
+      {/* Global Authentication Modal */}
+      <AuthModal />
 
       {/* 5. UI DB Source Indicator (dev builds only) */}
       {(import.meta as any).env?.DEV && (
-        <div className="bg-slate-100 border-t border-slate-200 text-[10px] font-mono text-slate-500 py-1.5 px-4 flex items-center justify-between mt-auto shrink-0 select-none">
+        <div className="bg-slate-100 border-t border-slate-200 text-[10px] font-mono text-slate-500 py-1.5 px-3 sm:px-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 mt-auto shrink-0 select-none">
           <span className="flex items-center gap-1">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             ⚙️ DEBUG MODE — DB Status: <strong className="text-emerald-700 font-bold">{dbStatus.loaded ? "ONLINE" : "FALLBACK"}</strong>
           </span>
-          <span>Data Source: <strong className="text-emerald-700 font-bold">{dbStatus.source}</strong> ({dbStatus.count} colleges loaded)</span>
+          <span className="truncate">Data Source: <strong className="text-emerald-700 font-bold">{dbStatus.source}</strong> ({dbStatus.count} colleges loaded)</span>
         </div>
       )}
     </div>

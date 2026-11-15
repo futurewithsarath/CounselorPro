@@ -8,10 +8,10 @@ def audit():
         with open(f, 'r', encoding='utf-8') as fp:
             d = json.load(fp)
         meta = d.get('metadata', {})
-        colleges = d.get('colleges', [])
-        col_codes = set(c['code'] for c in colleges)
-        branches = set(c['branch'] for c in colleges)
-        districts = set(c.get('district') for c in colleges)
+        colleges = d.get('colleges', []) or d.get('records', [])
+        col_codes = set(c.get('code') or c.get('collegeCode') or c.get('id') for c in colleges)
+        branches = set(c.get('branch') or c.get('course') for c in colleges)
+        districts = set(c.get('district') or c.get('state') for c in colleges)
         
         # Check cutoffs
         null_count = 0

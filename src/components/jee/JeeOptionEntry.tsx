@@ -680,12 +680,13 @@ export default function JeeOptionEntry({
       )}
 
       {/* Navigation Footer */}
-      <div className="mt-6 flex justify-between items-center border-t border-slate-200 pt-4">
+      <div className="mt-6 flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3 border-t border-slate-200 pt-4">
         <MotionButton
           variant="secondary"
           size="md"
           onClick={onBack}
           leftIcon={<ArrowLeft className="w-4 h-4" />}
+          className="w-full sm:w-auto"
         >
           Back to Eligibility Details
         </MotionButton>
@@ -696,8 +697,9 @@ export default function JeeOptionEntry({
           disabled={selectedChoices.length === 0}
           shimmer
           rightIcon={<ArrowRight className="w-4 h-4" />}
+          className="w-full sm:w-auto"
         >
-          Review & Practice Lock Choices
+          Review & Practice Lock Choices ({selectedChoices.length})
         </MotionButton>
       </div>
     </div>

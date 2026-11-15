@@ -437,11 +437,12 @@ export default function NeetProfileForm({
       </div>
 
       {/* Button Controls */}
-      <div className="mt-8 flex justify-between items-center border-t border-slate-200 pt-6">
+      <div className="mt-8 flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3 border-t border-slate-200 pt-6">
         <MotionButton
           variant="ghost"
           size="md"
           onClick={onBack}
+          className="w-full sm:w-auto"
         >
           Change Exam
         </MotionButton>
@@ -453,6 +454,7 @@ export default function NeetProfileForm({
           disabled={!canProceed}
           shimmer
           rightIcon={<ArrowRight className="w-4 h-4" />}
+          className="w-full sm:w-auto"
         >
           Proceed to Choice Filling
         </MotionButton>

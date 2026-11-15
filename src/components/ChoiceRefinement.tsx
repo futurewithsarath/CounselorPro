@@ -235,10 +235,10 @@ export default function ChoiceRefinement({ profile, selectedOptions, onNext, onB
       </div>
 
       {/* Button Controls */}
-      <div className="mt-8 flex justify-between items-center border-t border-slate-200 pt-6">
+      <div className="mt-8 flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3 border-t border-slate-200 pt-6">
         <button
           onClick={onBack}
-          className="px-6 py-2.5 border border-slate-200 hover:bg-slate-100 rounded-lg transition-all font-medium flex items-center gap-2 cursor-pointer"
+          className="w-full sm:w-auto px-6 py-2.5 border border-slate-200 hover:bg-slate-100 rounded-lg transition-all font-medium flex items-center justify-center gap-2 cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           Back
@@ -246,7 +246,7 @@ export default function ChoiceRefinement({ profile, selectedOptions, onNext, onB
         <button
           onClick={onNext}
           id="confirm-options-btn"
-          className="px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-md transition-all flex items-center gap-2 cursor-pointer"
+          className="w-full sm:w-auto px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer text-center"
         >
           Generate Registered Web Options Form
           <ArrowRight className="w-4 h-4" />

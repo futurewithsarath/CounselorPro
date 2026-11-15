@@ -1,26 +1,28 @@
 import { VercelRequest, VercelResponse } from "@vercel/node";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestoreDb, setFirestoreUnavailable } from "../_lib/index";
+import { verifySuperAdmin } from "../_lib/adminAuth";
 
-const MAX_BODY_BYTES = 8 * 1024 * 1024;
+const MAX_BODY_BYTES = 15 * 1024 * 1024; // 15 MB payload limit for bulk dataset upload
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed. Use POST." });
   try {
-    const authorization = req.headers.authorization || "";
-    if (!authorization.startsWith("Bearer ")) return res.status(401).json({ error: "Missing Firebase ID token." });
-    const decoded = await getAuth().verifyIdToken(authorization.slice(7), true);
-    const email = (decoded.email || "").toLowerCase();
-    
-    // Fail closed if ADMIN_EMAILS environment variable is missing or empty
-    const adminEmailsEnv = process.env.ADMIN_EMAILS;
-    if (!adminEmailsEnv || !adminEmailsEnv.trim()) {
-      console.error("[SECURITY] ADMIN_EMAILS environment variable is not configured. Failing closed.");
-      return res.status(403).json({ error: "Administrator allowlist is not configured on this server." });
+    const authResult = await verifySuperAdmin(req, res);
+    if (!authResult.authorized) return;
+    const decoded = authResult.decoded;
+    const configuredSuperAdminUid = (process.env.SUPER_ADMIN_UID || "").trim();
+    if (!configuredSuperAdminUid) {
+      console.error("[SECURITY] SUPER_ADMIN_UID environment variable is not configured on server. Failing closed.");
+      return res.status(403).json({ error: "Administrative access denied. Server configuration is missing." });
     }
-    const allowlist = adminEmailsEnv.split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
-    if (allowlist.length === 0 || !decoded.email_verified || !email || !allowlist.includes(email)) {
-      return res.status(403).json({ error: "A verified, allowlisted administrator account is required." });
+    const hasSuperAdminClaim = Boolean(decoded && decoded.role === "super_admin");
+    const matchesSuperAdminUid = Boolean(decoded?.uid && decoded.uid === configuredSuperAdminUid);
+
+    // Both conditions strictly required: verified custom claim role == 'super_admin' AND UID matches configured Super Admin UID
+    if (!hasSuperAdminClaim || !matchesSuperAdminUid) {
+      console.warn(`[SECURITY] Unauthorized admin upload attempt by UID "${decoded?.uid}" (claim: ${decoded?.role}). Denying.`);
+      return res.status(403).json({ error: "Access denied. Only the authorized Super Admin account can manage datasets." });
     }
 
     const rawBody = typeof req.body === "string" ? req.body : JSON.stringify(req.body ?? {});
@@ -50,21 +52,55 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const db = getFirestoreDb();
     if (!db) return res.status(503).json({ error: "Firebase server credentials are not configured." });
     const collection = db.collection("colleges");
-    for (let offset = 0; offset < records.length; offset += 400) {
-      const batch = db.batch();
-      for (const row of records.slice(offset, offset + 400)) batch.set(collection.doc(`${metadata.datasetId}__${row.id}`), { ...row, datasetId: metadata.datasetId, datasetMetadata: metadata });
-      await batch.commit();
+
+    // Multi-batch writing: Firestore limits batches to 500 operations each.
+    // We insert/update new records first in batches of 400. If any write batch fails,
+    // we abort without pruning existing records, reporting partial status clearly.
+    let insertedBatches = 0;
+    try {
+      for (let offset = 0; offset < records.length; offset += 400) {
+        const batch = db.batch();
+        for (const row of records.slice(offset, offset + 400)) {
+          batch.set(collection.doc(`${metadata.datasetId}__${row.id}`), { ...row, datasetId: metadata.datasetId, datasetMetadata: metadata });
+        }
+        await batch.commit();
+        insertedBatches++;
+      }
+    } catch (writeErr: any) {
+      console.error("[ADMIN UPLOAD ERROR] Partial batch write failure:", writeErr?.message || writeErr);
+      return res.status(500).json({
+        error: "Partial dataset write failure. Some batches could not be written to Firestore.",
+        batchesCommitted: insertedBatches
+      });
     }
 
-    const existing = await collection.where("datasetId", "==", metadata.datasetId).get();
-    const staleDocs = existing.docs.filter((doc: any) => !ids.has(doc.data().id));
-    for (let offset = 0; offset < staleDocs.length; offset += 400) {
-      const batch = db.batch();
-      staleDocs.slice(offset, offset + 400).forEach((doc: any) => batch.delete(doc.ref));
-      await batch.commit();
+    // After successful insertion, delete stale records for this datasetId in separate batches
+    try {
+      const existing = await collection.where("datasetId", "==", metadata.datasetId).get();
+      const staleDocs = existing.docs.filter((doc: any) => !ids.has(doc.data().id));
+      for (let offset = 0; offset < staleDocs.length; offset += 400) {
+        const batch = db.batch();
+        staleDocs.slice(offset, offset + 400).forEach((doc: any) => batch.delete(doc.ref));
+        await batch.commit();
+      }
+    } catch (cleanupErr: any) {
+      console.warn("[ADMIN UPLOAD WARNING] Stale records cleanup partially failed:", cleanupErr?.message || cleanupErr);
+      setFirestoreUnavailable(false);
+      return res.status(200).json({
+        message: "Dataset written, but stale record cleanup partially failed.",
+        count: records.length,
+        datasetId: metadata.datasetId,
+        warning: "Old records could not be fully pruned."
+      });
     }
+
     setFirestoreUnavailable(false);
-    return res.status(200).json({ message: "Dataset synchronized.", count: records.length, datasetId: metadata.datasetId, details: `${records.length} ${metadata.stream} records for ${metadata.exam} ${metadata.year} were synchronized.` });
+    return res.status(200).json({
+      message: "Dataset synchronized.",
+      count: records.length,
+      datasetId: metadata.datasetId,
+      details: `${records.length} records for ${metadata.exam} were synchronized.`
+    });
   } catch (error: any) {
     console.error("Admin dataset upload failed:", error?.message || error);
     return res.status(400).json({ error: "Dataset upload failed. Check the file and server configuration." });

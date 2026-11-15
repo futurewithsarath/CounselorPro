@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { StudentProfile, WebOption, MockAllotmentResult } from '../types';
 import { COLLEGES_DB, COLLEGES_DATASET_METADATA, COLLEGES_SOURCE_YEAR, getCollegeCutoff, getEligibleCutoff, getCollegesForStream, isCollegeAvailableToGender, hasLocalAreaCutoffs } from '../data/colleges';
 import { ArrowLeft, CheckCircle2, Award, Download, Building, DollarSign, Calendar, FileText, Sparkles, HelpCircle, AlertTriangle } from 'lucide-react';
+import { generatePreferenceListPdf } from '../utils/universalPdfService';
 import MotionButton from './ui/MotionButton';
 import Confetti from './ui/Confetti';
 import MockAllotmentScanner from './ui/MockAllotmentScanner';
@@ -77,207 +78,36 @@ export default function FinalReview({ profile, selectedOptions, onBack, onFinish
     document.body.removeChild(element);
   };
 
-  // Professional PDF report generator using jsPDF and jspdf-autotable
-  const handleDownloadPDF = () => {
+  // Professional Universal PDF report generator
+  const handleDownloadPDF = async () => {
     try {
-      void generatePdf();
+      const choices = selectedOptions.map(opt => ({
+        priority: opt.priority,
+        code: opt.collegeCode,
+        name: opt.collegeName,
+        branchOrProgram: opt.branchName || opt.branch,
+        fee: opt.fee,
+        districtOrState: opt.district || (hasLocalAreaCutoffs() ? `${profile.region || 'AU'}` : 'Statewide')
+      }));
+
+      await generatePreferenceListPdf({
+        profile: {
+          exam: profile.exam || 'AP_EAPCET',
+          stream: profile.stream || 'MPC',
+          rank: profile.rank,
+          category: profile.category,
+          gender: profile.gender,
+          domicileOrRegion: profile.region,
+          localArea: profile.region
+        },
+        choices
+      });
     } catch (err: any) {
       console.error("Failed to generate PDF:", err);
       alert("An error occurred while generating the PDF: " + err.message);
     }
   };
 
-  const generatePdf = async () => {
-    try {
-      const [{ jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
-      const doc = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      // Page dimensions
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-
-      // Top Border Accent (Dark Slate/Teal color scheme)
-      doc.setFillColor(15, 23, 42); // slate-900
-      doc.rect(0, 0, pageWidth, 6, 'F');
-
-      // Decorative header badge
-      doc.setFillColor(241, 245, 249); // slate-100
-      doc.roundedRect(pageWidth / 2 - 40, 10, 80, 8, 2, 2, 'F');
-      
-      doc.setFont('Helvetica', 'bold');
-      doc.setFontSize(8);
-      doc.setTextColor(100, 116, 139); // slate-500
-      doc.text("COUNSELORPRO PRACTICE COPY", pageWidth / 2, 15, { align: 'center' });
-
-      // Title & Council
-      doc.setFont('Helvetica', 'bold');
-      doc.setFontSize(14);
-      doc.setTextColor(15, 23, 42); // slate-900
-      doc.text("YOUR COUNSELLING PRACTICE LIST", pageWidth / 2, 28, { align: 'center' });
-
-      doc.setFontSize(11);
-      doc.setTextColor(5, 150, 105); // emerald-600
-      doc.text("PRIORITIZED WEB OPTIONS", pageWidth / 2, 34, { align: 'center' });
-
-      doc.setFont('Helvetica', 'normal');
-      doc.setFontSize(8);
-      doc.setTextColor(148, 163, 184); // slate-400
-      doc.text(`Historical cutoff dataset: ${COLLEGES_DATASET_METADATA?.sourceTitle || 'Not available'} (${COLLEGES_SOURCE_YEAR ?? 'n/a'}) • CounselorPro practice copy`, pageWidth / 2, 39, { align: 'center' });
-
-      // Dividers
-      doc.setDrawColor(226, 232, 240); // slate-200
-      doc.setLineWidth(0.5);
-      doc.line(15, 43, pageWidth - 15, 43);
-
-      // Student Profile Metadata Box
-      doc.setFillColor(248, 250, 252); // slate-50
-      doc.setDrawColor(226, 232, 240); // slate-200
-      doc.roundedRect(15, 47, pageWidth - 30, 32, 2, 2, 'FD');
-
-      // Heading for student details
-      doc.setFont('Helvetica', 'bold');
-      doc.setFontSize(9);
-      doc.setTextColor(71, 85, 105); // slate-600
-      doc.text("PRACTICE PROFILE DETAILS", 20, 53);
-
-      doc.setDrawColor(241, 245, 249);
-      doc.line(20, 55, pageWidth - 20, 55);
-
-      // Metadata Key-Value pairs
-      doc.setFont('Helvetica', 'bold');
-      doc.setFontSize(8);
-      doc.setTextColor(100, 116, 139); // slate-500
-      
-      // Col 1
-      doc.text("EXAM / STREAM:", 20, 61);
-      doc.text("SECURED RANK:", 20, 67);
-      doc.text("GENDER:", 20, 73);
-
-      // Col 2
-      doc.text("RESERVATION CATEGORY:", 110, 61);
-      doc.text(hasLocalAreaCutoffs() ? "LOCAL REGION:" : "CUTOFF AREA:", 110, 67);
-      doc.text("SUBMISSION DATE:", 110, 73);
-
-      // Values
-      doc.setFont('Helvetica', 'bold');
-      doc.setFontSize(9);
-      doc.setTextColor(15, 23, 42); // slate-900
-      doc.text(String(profile.exam || '').replace('_', ' ') + ` (${profile.stream || ''})`, 55, 61);
-      doc.text(Number(profile.rank || 0).toLocaleString(), 55, 67);
-      doc.text(String(profile.gender || ''), 55, 73);
-
-      doc.text(String(profile.category || ''), 155, 61);
-      doc.text(hasLocalAreaCutoffs() ? String(profile.region || '') : 'Not split in source', 155, 67);
-      doc.text(new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString(), 155, 73);
-
-      // Table Title
-      doc.setFont('Helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.setTextColor(15, 23, 42); // slate-900
-      doc.text("PRACTICE CHOICE SEQUENCE & PRIORITY ORDER", 15, 88);
-
-      // Options table
-      const tableHeaders = [['No.', 'Code', 'College/Institution Name', 'Branch', 'Annual Fee']];
-      const tableRows = selectedOptions.map(opt => [
-        String(opt.priority),
-        String(opt.collegeCode),
-        String(opt.collegeName),
-        String(opt.branchName || opt.branch),
-        opt.fee === null ? 'Not listed' : `Rs. ${opt.fee.toLocaleString()}/-`
-      ]);
-
-      // Call autoTable helper
-      autoTable(doc, {
-        startY: 92,
-        margin: { left: 15, right: 15 },
-        head: tableHeaders,
-        body: tableRows,
-        theme: 'striped',
-        headStyles: {
-          fillColor: [15, 23, 42], // slate-900 theme
-          textColor: [255, 255, 255],
-          fontSize: 9,
-          fontStyle: 'bold',
-          halign: 'left'
-        },
-        columnStyles: {
-          0: { cellWidth: 12, halign: 'center', fontStyle: 'bold' }, // Priority
-          1: { cellWidth: 25, fontStyle: 'bold', textColor: [5, 150, 105] }, // Code (Emerald)
-          2: { cellWidth: 'auto' }, // Name
-          3: { cellWidth: 25, halign: 'center' }, // Branch
-          4: { cellWidth: 30, halign: 'right', fontStyle: 'bold' } // Fee
-        },
-        styles: {
-          fontSize: 8.5,
-          cellPadding: 3,
-          valign: 'middle'
-        },
-        alternateRowStyles: {
-          fillColor: [248, 250, 252] // slate-50
-        }
-      });
-
-      // Get Y coordinate after table
-      let finalY = (doc as any).lastAutoTable.finalY + 10;
-
-      // Check if signature box would overflow page height, if so start new page or handle gracefully
-      if (finalY + 45 > pageHeight) {
-        doc.addPage();
-        finalY = 20;
-      }
-
-      // Digital Integrity Footer Box
-      doc.setFillColor(248, 250, 252);
-      doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(15, finalY, pageWidth - 30, 32, 2, 2, 'FD');
-
-      // Integrity Details
-      doc.setFont('Helvetica', 'bold');
-      doc.setFontSize(8.5);
-      doc.setTextColor(5, 150, 105); // emerald-600
-      doc.text("PRACTICE COPY - NOT AN OFFICIAL COUNSELLING SUBMISSION", 20, finalY + 10);
-
-      doc.setFont('Helvetica', 'normal');
-      doc.setFontSize(7.5);
-      doc.setTextColor(100, 116, 139); // slate-500
-      doc.text("Cutoff comparisons use the source year shown above and are for practice only.", 20, finalY + 15);
-      doc.text("College fees are omitted when they are not present in the source data.", 20, finalY + 19);
-      doc.text("Generated: " + new Date().toLocaleString(), 20, finalY + 23);
-      doc.text("Student-prepared list; no options have been submitted to an authority.", 20, finalY + 27);
-
-      // Final signature line
-      doc.setFont('Helvetica', 'bold');
-      doc.setFontSize(7.5);
-      doc.setTextColor(15, 23, 42); // slate-900
-      doc.text("STUDENT COPY", pageWidth - 55, finalY + 24, { align: 'center' });
-      doc.setDrawColor(203, 213, 225); // slate-300
-      doc.line(pageWidth - 75, finalY + 20, pageWidth - 15, finalY + 20);
-
-      // Page numbers & disclaimers at the absolute bottom
-      doc.setFont('Helvetica', 'normal');
-      doc.setFontSize(7);
-      doc.setTextColor(148, 163, 184); // slate-400
-      const pageCount = doc.getNumberOfPages();
-      for (let page = 1; page <= pageCount; page++) {
-        doc.setPage(page);
-        doc.setFont('Helvetica', 'normal');
-        doc.setFontSize(7);
-        doc.setTextColor(148, 163, 184);
-        doc.text("Practice copy only • Historical cutoffs do not guarantee a future seat", pageWidth / 2, pageHeight - 12, { align: 'center' });
-              doc.text(`Page ${page} of ${pageCount} | CounselorPro`, pageWidth / 2, pageHeight - 8, { align: 'center' });
-      }
-
-      // Trigger standard save
-      doc.save(`CounselorPro_${profile.exam}_${profile.stream}_Practice_Options.pdf`);
-    } catch (err: any) {
-      console.error("Failed to generate PDF:", err);
-      alert("An error occurred while generating the PDF: " + err.message);
-    }
-  };
 
   return (
     <div className="max-w-4xl mx-auto py-6 px-4" id="final-review-workspace">
@@ -302,21 +132,22 @@ export default function FinalReview({ profile, selectedOptions, onBack, onFinish
           <div className="bg-white rounded-2xl border border-slate-300 shadow-sm overflow-hidden" id="registered-slip-card">
             
             {/* Slip Header */}
-            <div className="bg-slate-50 p-6 border-b border-slate-200 flex justify-between items-start flex-wrap gap-4">
+            <div className="bg-slate-50 p-4 sm:p-6 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-start gap-4">
               <div className="space-y-1">
                 <span className="text-[10px] font-mono tracking-widest text-emerald-700 block uppercase">COUNSELORPRO • PRACTICE COPY</span>
                 <h3 className="font-sans font-extrabold text-slate-900 text-lg">Your Practice Options List</h3>
                 <p className="text-xs text-slate-500">Historical cutoff practice only. This list is not submitted to an admissions authority.</p>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap sm:flex-nowrap gap-2 w-full sm:w-auto">
                 <MotionButton
                   variant="secondary"
                   size="sm"
                   onClick={handleDownloadSlip}
                   leftIcon={<Download className="w-3.5 h-3.5" />}
+                  className="flex-1 sm:flex-initial text-xs"
                   title="Download Slip Text Document"
                 >
-                  Download Plain TXT
+                  Download TXT
                 </MotionButton>
                 <MotionButton
                   variant="primary"
@@ -324,9 +155,10 @@ export default function FinalReview({ profile, selectedOptions, onBack, onFinish
                   onClick={handleDownloadPDF}
                   leftIcon={<FileText className="w-3.5 h-3.5" />}
                   shimmer
+                  className="flex-1 sm:flex-initial text-xs"
                   title="Download practice options list PDF"
                 >
-                  Download as PDF
+                  Download PDF
                 </MotionButton>
               </div>
             </div>
@@ -563,11 +395,12 @@ export default function FinalReview({ profile, selectedOptions, onBack, onFinish
           </motion.div>
 
           {/* Action Trigger Buttons */}
-          <div className="flex flex-col sm:flex-row justify-between gap-4 mt-8">
+          <div className="flex flex-col-reverse sm:flex-row justify-between gap-3 sm:gap-4 mt-8">
             <MotionButton
               variant="secondary"
               size="md"
               onClick={() => setAllotment(null)}
+              className="w-full sm:w-auto"
             >
               Reset Mock Allotment
             </MotionButton>
@@ -577,6 +410,7 @@ export default function FinalReview({ profile, selectedOptions, onBack, onFinish
               onClick={onFinish}
               id="finish-simulation-btn"
               shimmer
+              className="w-full sm:w-auto"
             >
               Submit & Complete Practice
             </MotionButton>

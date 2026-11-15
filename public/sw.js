@@ -2,9 +2,7 @@ const CACHE_NAME = 'counselor-pro-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
-  '/src/main.tsx',
-  '/src/index.css',
-  '/colleges_2024.json'
+  '/favicon.svg'
 ];
 
 // Install Event: pre-cache static shell

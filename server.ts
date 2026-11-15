@@ -2,10 +2,11 @@ import express from "express";
 import path from "path";
 import dotenv from "dotenv";
 import fs from "fs";
+import crypto from "node:crypto";
 import { GoogleGenAI } from "@google/genai";
 import { createServer as createViteServer } from "vite";
 import { initializeApp, cert, getApps, getApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
@@ -24,7 +25,7 @@ app.use((_req, res, next) => {
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
-  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://apis.google.com https://*.firebaseapp.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://generativelanguage.googleapis.com wss: ws:; frame-src 'self' https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';");
+  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://apis.google.com https://*.firebaseapp.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://generativelanguage.googleapis.com https://www.google.com/recaptcha/ wss: ws:; frame-src 'self' https://*.firebaseapp.com https://www.google.com/recaptcha/ https://recaptcha.google.com/; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';");
   next();
 });
 app.use(compression());
@@ -58,7 +59,7 @@ const aiLimiter = rateLimit({
 
 const notifyLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 10,
+  max: 5,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many notification requests. Please try again after 1 minute." }
@@ -99,7 +100,7 @@ let firestoreDb: any = null;
 try {
   const serviceAccount = getServiceAccount();
   if (serviceAccount) {
-    const adminApp = getApps().length === 0 
+    const adminApp = getApps().length === 0
       ? initializeApp({ credential: cert(serviceAccount as any), projectId: serviceAccount.project_id })
       : getApp();
     firestoreDb = getFirestore(adminApp);
@@ -121,7 +122,7 @@ app.get("/api/colleges-legacy", (_req, res) => {
 app.get("/api/colleges", async (req, res) => {
   const datasetId = String(req.query.datasetId || "");
   if (
-    !/^(AP_EAPCET|TS_EAMCET)_(MPC|BIPC)_\d{4}$/.test(datasetId) && 
+    !/^(AP_EAPCET|TS_EAMCET)_(MPC|BIPC)_\d{4}$/.test(datasetId) &&
     !/^NEET_UG_\d{4}(_\d{4})?(_VERIFIED)?$/.test(datasetId) &&
     !/^NEET_UG_\d{4}_ROUND\d+_MCC$/.test(datasetId) &&
     !/^NMC_MBBS_\d{4}_\d{4}$/.test(datasetId)
@@ -173,9 +174,14 @@ if (!apiKey) {
 let aiClient: GoogleGenAI | null = null;
 
 function getAIClient(): GoogleGenAI {
+  const currentApiKey = process.env.GEMINI_API_KEY;
+  if (!currentApiKey && process.env.NODE_ENV === "production") {
+    throw new Error("GEMINI_API_KEY environment variable is not configured in production.");
+  }
+
   if (!aiClient) {
     aiClient = new GoogleGenAI({
-      apiKey: apiKey || "MOCK_KEY_FALLBACK",
+      apiKey: currentApiKey || "MOCK_KEY_FALLBACK",
       httpOptions: {
         headers: {
           'User-Agent': 'aistudio-build',
@@ -274,7 +280,7 @@ Your sequence is generally **well-designed**. You have correctly followed the go
 
     const client = getAIClient();
     const response = await client.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-2.5-flash",
       contents: prompt,
     });
 
@@ -283,6 +289,9 @@ Your sequence is generally **well-designed**. You have correctly followed the go
 
   } catch (err: any) {
     console.error("[AI SERVICE ERROR] Gemini API Error:", err);
+    if (err?.status === 429 || err?.message?.includes("RESOURCE_EXHAUSTED") || err?.message?.includes("quota")) {
+      return res.status(429).json({ error: "AI service quota temporarily exceeded. Please try again in a few moments." });
+    }
     res.status(500).json({ error: "Failed to generate AI analysis. Please try again later." });
   }
 });
@@ -290,10 +299,13 @@ Your sequence is generally **well-designed**. You have correctly followed the go
 // API: Expose public non-sensitive Firebase config for client-side SDK initialization
 app.get("/api/config/firebase", (req, res) => {
   res.json({
-    apiKey: process.env.FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY || "",
-    authDomain: process.env.FIREBASE_AUTH_DOMAIN || process.env.VITE_FIREBASE_AUTH_DOMAIN || (process.env.FIREBASE_PROJECT_ID ? `${process.env.FIREBASE_PROJECT_ID}.firebaseapp.com` : ""),
-    projectId: process.env.FIREBASE_PROJECT_ID || "",
-    appId: process.env.FIREBASE_APP_ID || process.env.VITE_FIREBASE_APP_ID || ""
+    apiKey: process.env.FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY || "AIzaSyAgfXQFSoGjvSxmskHK4tu97Tt0DopngAg",
+    authDomain: process.env.FIREBASE_AUTH_DOMAIN || process.env.VITE_FIREBASE_AUTH_DOMAIN || "counselorpro.firebaseapp.com",
+    projectId: process.env.FIREBASE_PROJECT_ID || "counselorpro",
+    appId: process.env.FIREBASE_APP_ID || process.env.VITE_FIREBASE_APP_ID || "1:289926335025:web:a061b899b2a0a68476a310",
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "counselorpro.firebasestorage.app",
+    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || "289926335025",
+    measurementId: process.env.FIREBASE_MEASUREMENT_ID || "G-RZME2N1DTD"
   });
 });
 
@@ -326,61 +338,94 @@ app.post("/api/notify-request", notifyLimiter, async (req, res) => {
       });
     }
 
-    // Check for duplicate-email-per-examGroup
-    const dupCheck = await firestoreDb.collection("notify_requests")
-      .where("email", "==", trimmedEmail)
-      .where("examGroup", "==", group)
-      .limit(1)
-      .get();
+    // Eliminate TOCTOU race condition: deterministic SHA-256 docId with docRef.create()
+    const docId = crypto.createHash("sha256").update(`${trimmedEmail}:${group}`).digest("hex");
+    const docRef = firestoreDb.collection("notify_requests").doc(docId);
 
-    if (!dupCheck.empty) {
+    try {
+      await docRef.create({
+        email: trimmedEmail,
+        examGroup: group,
+        createdAt: FieldValue.serverTimestamp()
+      });
+
       return res.status(200).json({
         success: true,
-        message: "You are already registered for notification!",
-        alreadyExists: true,
+        message: "Successfully registered for notification!",
       });
+    } catch (createErr: any) {
+      if (createErr.code === 6 || createErr.message?.includes("ALREADY_EXISTS")) {
+        return res.status(200).json({
+          success: true,
+          message: "You are already registered for notification!",
+          alreadyExists: true,
+        });
+      }
+      throw createErr;
     }
-
-    // Write a document with { email, examGroup, timestamp: server timestamp }
-    await firestoreDb.collection("notify_requests").add({
-      email: trimmedEmail,
-      examGroup: group,
-      timestamp: new Date()
-    });
-
-    return res.status(200).json({
-      success: true,
-      message: "Successfully registered for notification!",
-    });
   } catch (err: any) {
     console.error("[NOTIFY SERVICE ERROR] Failed to register notification in local server:", err);
     return res.status(500).json({ error: "Failed to register notification. Please try again later." });
   }
 });
 
-// 1.5. API: validate, authorize, and atomically replace a versioned dataset (Strict 15mb body limit applied here only)
+// 1.5. Mandatory Super Admin Authorization Gate for all administrative APIs (/api/admin/*)
+app.use("/api/admin/*", async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization || "";
+    if (!authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Missing Firebase ID token. Bearer authentication required." });
+    }
+    const token = authHeader.slice(7).trim();
+    if (!token) {
+      return res.status(401).json({ error: "Empty Firebase ID token provided." });
+    }
+    const decoded = await getAuth().verifyIdToken(token, true);
+    const configuredSuperAdminUid = (process.env.SUPER_ADMIN_UID || "").trim();
+    if (!configuredSuperAdminUid) {
+      console.error("[SECURITY] SUPER_ADMIN_UID environment variable is not configured on server. Failing closed.");
+      return res.status(403).json({ error: "Administrative access denied. Server configuration is missing." });
+    }
+    const hasSuperAdminClaim = Boolean(decoded && decoded.role === "super_admin");
+    const matchesSuperAdminUid = Boolean(decoded?.uid && decoded.uid === configuredSuperAdminUid);
+
+    // Both conditions strictly required: verified custom claim role == 'super_admin' AND UID matches SUPER_ADMIN_UID
+    if (!hasSuperAdminClaim || !matchesSuperAdminUid) {
+      console.warn(`[SECURITY] Unauthorized administrative API request to ${req.originalUrl} by UID "${decoded?.uid}" (claim: ${decoded?.role}). Denying.`);
+      return res.status(403).json({ error: "Access denied. Only the authorized Super Admin account can access administrative endpoints." });
+    }
+    (req as any).superAdmin = decoded;
+    next();
+  } catch (err: any) {
+    console.warn(`[SECURITY] Administrative API token verification failed on ${req.originalUrl}:`, err?.message || err);
+    return res.status(401).json({ error: "Invalid, expired, or malformed Firebase ID token." });
+  }
+});
+
+// 1.6. API: validate, authorize, and atomically replace a versioned dataset (Strict 15mb body limit applied here only)
 app.post("/api/admin/upload-colleges", uploadJsonParser, async (req, res) => {
   try {
     const authHeader = req.headers.authorization || "";
     if (!authHeader.startsWith("Bearer ")) return res.status(401).json({ error: "Missing Firebase ID token." });
     const decoded = await getAuth().verifyIdToken(authHeader.slice(7), true);
-    const email = (decoded.email || "").toLowerCase();
-
-    // Fail closed if ADMIN_EMAILS environment variable is missing or empty
-    const adminEmailsEnv = process.env.ADMIN_EMAILS;
-    if (!adminEmailsEnv || !adminEmailsEnv.trim()) {
-      console.error("[SECURITY] ADMIN_EMAILS environment variable is not configured. Failing closed.");
-      return res.status(403).json({ error: "Administrator allowlist is not configured on this server." });
+    const configuredSuperAdminUid = (process.env.SUPER_ADMIN_UID || "").trim();
+    if (!configuredSuperAdminUid) {
+      console.error("[SECURITY] SUPER_ADMIN_UID environment variable is not configured on server. Failing closed.");
+      return res.status(403).json({ error: "Administrative access denied. Server configuration is missing." });
     }
-    const allowlist = adminEmailsEnv.split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
-    if (allowlist.length === 0 || !decoded.email_verified || !email || !allowlist.includes(email)) {
-      return res.status(403).json({ error: "A verified, allowlisted administrator account is required." });
+    const hasSuperAdminClaim = Boolean(decoded && decoded.role === "super_admin");
+    const matchesSuperAdminUid = Boolean(decoded?.uid && decoded.uid === configuredSuperAdminUid);
+
+    // Both conditions strictly required: verified custom claim role == 'super_admin' AND UID matches SUPER_ADMIN_UID
+    if (!hasSuperAdminClaim || !matchesSuperAdminUid) {
+      console.warn(`[SECURITY] Unauthorized admin upload attempt by UID "${decoded?.uid}" (claim: ${decoded?.role}). Denying.`);
+      return res.status(403).json({ error: "Access denied. Only the authorized Super Admin account can manage datasets." });
     }
     if (!firestoreDb) return res.status(503).json({ error: "Firebase server credentials are not configured." });
 
     const { metadata, colleges } = req.body || {};
     if (!metadata || !Array.isArray(colleges) || colleges.length < 1 || colleges.length > 5000) return res.status(400).json({ error: "Expected a versioned dataset with 1 to 5,000 records." });
-    
+
     const isNeet = metadata.exam === "NEET_UG";
     if (!["AP_EAPCET", "TS_EAMCET", "NEET_UG"].includes(metadata.exam)) {
       return res.status(400).json({ error: "Exam must be AP_EAPCET, TS_EAMCET, or NEET_UG." });
@@ -399,24 +444,63 @@ app.post("/api/admin/upload-colleges", uploadJsonParser, async (req, res) => {
       ids.add(row.id);
     }
     const collection = firestoreDb.collection("colleges");
-    for (let offset = 0; offset < colleges.length; offset += 400) {
-      const batch = firestoreDb.batch();
-      for (const row of colleges.slice(offset, offset + 400)) batch.set(collection.doc(`${metadata.datasetId}__${row.id}`), { ...row, datasetId: metadata.datasetId, datasetMetadata: metadata });
-      await batch.commit();
+
+    // Multi-batch writing: Firestore limits batches to 500 operations each.
+    // Insert/update new records first in batches of 400. If any write batch fails, abort without deleting stale records.
+    let insertedBatches = 0;
+    try {
+      for (let offset = 0; offset < colleges.length; offset += 400) {
+        const batch = firestoreDb.batch();
+        for (const row of colleges.slice(offset, offset + 400)) {
+          batch.set(collection.doc(`${metadata.datasetId}__${row.id}`), { ...row, datasetId: metadata.datasetId, datasetMetadata: metadata });
+        }
+        await batch.commit();
+        insertedBatches++;
+      }
+    } catch (writeErr: any) {
+      console.error("[ADMIN UPLOAD ERROR] Partial batch write failure:", writeErr?.message || writeErr);
+      return res.status(500).json({
+        error: "Partial dataset write failure. Some batches could not be written to Firestore.",
+        batchesCommitted: insertedBatches
+      });
     }
-    const existing = await collection.where("datasetId", "==", metadata.datasetId).get();
-    const stale = existing.docs.filter((doc: any) => !ids.has(doc.data().id));
-    for (let offset = 0; offset < stale.length; offset += 400) {
-      const batch = firestoreDb.batch();
-      stale.slice(offset, offset + 400).forEach((doc: any) => batch.delete(doc.ref));
-      await batch.commit();
+
+    // Delete stale records in separate batches
+    try {
+      const existing = await collection.where("datasetId", "==", metadata.datasetId).get();
+      const stale = existing.docs.filter((doc: any) => !ids.has(doc.data().id));
+      for (let offset = 0; offset < stale.length; offset += 400) {
+        const batch = firestoreDb.batch();
+        stale.slice(offset, offset + 400).forEach((doc: any) => batch.delete(doc.ref));
+        await batch.commit();
+      }
+    } catch (cleanupErr: any) {
+      console.warn("[ADMIN UPLOAD WARNING] Stale records cleanup partially failed:", cleanupErr?.message || cleanupErr);
+      firestoreUnavailable = false;
+      return res.status(200).json({
+        message: "Dataset written, but stale record cleanup partially failed.",
+        count: colleges.length,
+        datasetId: metadata.datasetId,
+        warning: "Old records could not be fully pruned."
+      });
     }
+
     firestoreUnavailable = false;
-    return res.status(200).json({ message: "Dataset synchronized.", count: colleges.length, details: `${colleges.length} records for ${metadata.exam} ${metadata.year} were synchronized.` });
+    return res.status(200).json({
+      message: "Dataset synchronized.",
+      count: colleges.length,
+      datasetId: metadata.datasetId,
+      details: `${colleges.length} records for ${metadata.exam} were synchronized.`
+    });
   } catch (err: any) {
     console.error("Admin dataset upload failed:", err?.message || err);
     return res.status(400).json({ error: "Dataset upload failed. Check the file and server configuration." });
   }
+});
+
+// Explicit 404 for unhandled API endpoints
+app.all("/api/*", (_req, res) => {
+  res.status(404).json({ error: "API endpoint not found." });
 });
 
 // 2. Serve Vite dev server or production static assets
