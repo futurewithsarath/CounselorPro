@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Database, UploadCloud, AlertCircle, RefreshCw, X, CheckCircle, Info, Lock, ShieldCheck, Mail, LogOut, Key } from 'lucide-react';
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import { Database, UploadCloud, AlertCircle, RefreshCw, X, CheckCircle, Lock, ShieldCheck, LogOut, LogIn } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { hasValidCutoffData } from '../data/datasetValidation';
 
 interface AdminModalProps {
@@ -11,88 +10,29 @@ interface AdminModalProps {
 }
 
 export default function AdminModal({ isOpen, onClose, onUploadSuccess }: AdminModalProps) {
-  const [adminEmail, setAdminEmail] = useState<string>('');
-  const [passcode, setPasscode] = useState<string>('');
-  const [isPasscodeAuthenticated, setIsPasscodeAuthenticated] = useState<boolean>(false);
-  const [authError, setAuthError] = useState('');
-  const [isVerifying, setIsVerifying] = useState(false);
+  const { user, userProfile, isSuperAdmin, idToken, isLoading: isAuthLoading, openAuthModal, logout } = useAuth();
 
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<any[] | null>(null);
   const [datasetMetadata, setDatasetMetadata] = useState<any>(null);
-  const [adminEmails, setAdminEmails] = useState<string[]>([]);
   const [status, setStatus] = useState<'idle' | 'parsing' | 'ready' | 'uploading' | 'success' | 'error'>('idle');
   const [log, setLog] = useState<string[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Firebase integration states
-  const [firebaseConfig, setFirebaseConfig] = useState<any>(null);
-  const [firebaseApp, setFirebaseApp] = useState<any>(null);
-  const [firebaseAuth, setFirebaseAuth] = useState<any>(null);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [idToken, setIdToken] = useState<string>('');
-  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+  // Authoritative dual-condition Super Admin evaluation
+  const isAccessAllowed = Boolean(
+    !isAuthLoading &&
+    user &&
+    isSuperAdmin &&
+    userProfile?.role === 'super_admin'
+  );
 
-  // Load configuration and listen to authentication state
   useEffect(() => {
-    if (!isOpen) return;
-
-    let active = true;
-    let unsubscribeAuth: (() => void) | undefined;
-    const fetchConfig = async () => {
-      try {
-        const response = await fetch('/api/config/firebase');
-        if (!response.ok) throw new Error('Failed to load Firebase config');
-        const config = await response.json();
-        
-        if (active) {
-          setFirebaseConfig(config);
-          setIsLoadingConfig(false);
-
-          if (config.apiKey && config.projectId) {
-            try {
-              const app = getApps().length === 0 ? initializeApp(config) : getApp();
-              const auth = getAuth(app);
-              setFirebaseApp(app);
-              setFirebaseAuth(auth);
-
-              unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                  setCurrentUser(user);
-                  try {
-                    const token = await user.getIdToken();
-                    setIdToken(token);
-                    if (user.email) {
-                      setAdminEmail(user.email);
-                    }
-                  } catch (tokenErr) {
-                    console.error('Failed to get user ID token:', tokenErr);
-                  }
-                } else {
-                  setCurrentUser(null);
-                  setIdToken('');
-                  setAdminEmail('');
-                }
-              });
-
-            } catch (initErr) {
-              console.error('Error initializing client Firebase:', initErr);
-            }
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load Firebase configuration from server:', err);
-        if (active) setIsLoadingConfig(false);
-      }
-    };
-
-    fetchConfig();
-    return () => {
-      active = false;
-      unsubscribeAuth?.();
-    };
+    if (!isOpen) {
+      resetPortal();
+    }
   }, [isOpen]);
 
   if (!isOpen) return null;
@@ -161,25 +101,43 @@ export default function AdminModal({ isOpen, onClose, onUploadSuccess }: AdminMo
           setStatus('ready');
           appendLog(`Successfully parsed NEET UG dataset: ${records.length} medical & AYUSH records found.`);
           appendLog(`Authorities detected: MCC, Dr. YSRUHS (AP), KNRUHS (Telangana), AACCC (AYUSH).`);
-          appendLog(`Ready to commit to Firebase Firestore (projectId: ${firebaseConfig?.projectId || 'counselorpro-6975d'}).`);
+          appendLog(`Ready to commit to Firebase Firestore via secure Super Admin pipeline.`);
           return;
         }
 
         const rows = json?.colleges;
-        if (!json?.metadata || !Array.isArray(rows)) throw new Error('Expected a versioned CounselorPro dataset with metadata and a colleges array.');
+        if (!json?.metadata || !Array.isArray(rows)) {
+          throw new Error('Expected a versioned CounselorPro dataset with metadata and a colleges array.');
+        }
 
         if (rows.length === 0) {
           throw new Error('The JSON array is empty.');
         }
 
         const { datasetId, exam, stream, year } = json.metadata;
-        if (!['AP_EAPCET', 'TS_EAMCET'].includes(exam) || !['MPC', 'BiPC'].includes(stream) || !Number.isInteger(year) || datasetId !== `${exam}_${String(stream).toUpperCase()}_${year}`) {
+        if (
+          !['AP_EAPCET', 'TS_EAMCET'].includes(exam) ||
+          !['MPC', 'BiPC'].includes(stream) ||
+          !Number.isInteger(year) ||
+          datasetId !== `${exam}_${String(stream).toUpperCase()}_${year}`
+        ) {
           throw new Error('Dataset ID, exam, stream, and year must match the versioned dataset naming rule.');
         }
+
         const ids = new Set<string>();
         for (let index = 0; index < rows.length; index++) {
           const row = rows[index];
-          if (!row || typeof row.id !== 'string' || !row.id || ids.has(row.id) || !['code', 'name', 'branch'].every(field => typeof row[field] === 'string' && row[field].trim()) || row.exam !== exam || row.stream !== stream || row.year !== year || !hasValidCutoffData(row)) {
+          if (
+            !row ||
+            typeof row.id !== 'string' ||
+            !row.id ||
+            ids.has(row.id) ||
+            !['code', 'name', 'branch'].every(field => typeof row[field] === 'string' && row[field].trim()) ||
+            row.exam !== exam ||
+            row.stream !== stream ||
+            row.year !== year ||
+            !hasValidCutoffData(row)
+          ) {
             throw new Error(`Invalid course record or cutoff values at row ${index + 1}.`);
           }
           ids.add(row.id);
@@ -189,7 +147,7 @@ export default function AdminModal({ isOpen, onClose, onUploadSuccess }: AdminMo
         setDatasetMetadata(json?.metadata || null);
         setStatus('ready');
         appendLog(`Successfully parsed dataset: ${rows.length.toLocaleString()} entries found${json?.metadata?.year ? ` (${json.metadata.year})` : ''}.`);
-        appendLog(`Ready to commit to Firebase Firestore (projectId: ${firebaseConfig?.projectId || 'counselorpro-6975d'}).`);
+        appendLog(`Ready to commit to Firebase Firestore via secure Super Admin pipeline.`);
       } catch (err: any) {
         setStatus('error');
         setErrorMsg(`Parsing Error: ${err.message}`);
@@ -206,10 +164,10 @@ export default function AdminModal({ isOpen, onClose, onUploadSuccess }: AdminMo
   const triggerUpload = async () => {
     if (!parsedData) return;
 
-    if (!idToken) {
+    if (!user) {
       setStatus('error');
-      setErrorMsg('A verified Firebase Admin ID token is required. Passcode alone cannot commit database writes. Please sign in with an allowlisted Google Admin account.');
-      appendLog('ACCESS BLOCKED: The server strictly enforces Firebase Admin ID token verification against ADMIN_EMAILS allowlist.');
+      setErrorMsg('Authentication required. Sign in with the designated Super Admin account.');
+      appendLog('ACCESS BLOCKED: User is unauthenticated.');
       return;
     }
 
@@ -218,29 +176,34 @@ export default function AdminModal({ isOpen, onClose, onUploadSuccess }: AdminMo
     appendLog(`Validating and uploading the complete dataset as one versioned import...`);
 
     try {
-        const res = await fetch('/api/admin/upload-colleges', {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`
-          },
-          body: JSON.stringify({ metadata: datasetMetadata, colleges: parsedData })
-        });
+      // Always get a freshly verified ID token from Firebase Auth
+      const authToken = await user.getIdToken(true);
+      if (!authToken) {
+        throw new Error('Could not acquire valid Firebase ID token.');
+      }
 
-        let result: any;
-        const responseText = await res.text();
-        try {
-          result = JSON.parse(responseText);
-        } catch (parseErr: any) {
-          throw new Error(`Failed to parse server response as JSON. Server might have timed out or crashed. Raw response (truncated): ${responseText.substring(0, 400)}${responseText.length > 400 ? '...' : ''}`);
-        }
+      const res = await fetch('/api/admin/upload-colleges', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ metadata: datasetMetadata, colleges: parsedData })
+      });
 
-        if (!res.ok) {
-          throw new Error(result.error || result.details || `Server returned error status ${res.status}.`);
-        }
+      let result: any;
+      const responseText = await res.text();
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseErr: any) {
+        throw new Error(`Failed to parse server response as JSON. Raw response (truncated): ${responseText.substring(0, 400)}${responseText.length > 400 ? '...' : ''}`);
+      }
 
-        appendLog(`Dataset upload complete: ${result.details || result.message}`);
+      if (!res.ok) {
+        throw new Error(result.error || result.details || `Server returned error status ${res.status}.`);
+      }
 
+      appendLog(`Dataset upload complete: ${result.details || result.message}`);
       setStatus('success');
       appendLog(`Successfully synchronized all ${parsedData.length.toLocaleString()} records.`);
       if (onUploadSuccess) {
@@ -261,72 +224,6 @@ export default function AdminModal({ isOpen, onClose, onUploadSuccess }: AdminMo
     setErrorMsg('');
   };
 
-  const handleGoogleSignIn = async () => {
-    if (!firebaseAuth) {
-      setAuthError('Firebase Authentication has not been initialized. Please check configuration.');
-      return;
-    }
-    setAuthError('');
-    setIsVerifying(true);
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(firebaseAuth, provider);
-      const user = result.user;
-      const token = await user.getIdToken();
-      
-      if (user.email && user.emailVerified) {
-        setIdToken(token);
-        setAdminEmail(user.email);
-      } else {
-        setAuthError(`A verified Google email account is required for administrator sign in.`);
-        await signOut(firebaseAuth);
-      }
-    } catch (err: any) {
-      console.error('Google Auth Sign In error:', err);
-      if (err.message?.includes('unauthorized-domain') || err.code?.includes('unauthorized-domain')) {
-        setAuthError(`Firebase Error (auth/unauthorized-domain): The domain "${window.location.hostname}" is not authorized. To resolve this permanently, log into your Firebase Console -> Authentication -> Settings -> Authorized Domains and add "${window.location.hostname}".`);
-      } else if (err.message?.includes('operation-not-allowed') || err.code?.includes('operation-not-allowed')) {
-        setAuthError(`Firebase Error (auth/operation-not-allowed): Google Sign-In is not enabled as a sign-in provider in your Firebase project. To resolve this permanently, open your Firebase Console -> Authentication -> Sign-in method, click 'Add new provider', and enable 'Google'.`);
-      } else {
-        setAuthError(`Authentication Error: ${err.message || err}`);
-      }
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  const handleSignOutAdmin = async () => {
-    setAdminEmail('');
-    setIdToken('');
-    setIsPasscodeAuthenticated(false);
-    setPasscode('');
-    resetPortal();
-    if (firebaseAuth) {
-      try {
-        await signOut(firebaseAuth);
-      } catch (err) {
-        console.error('Failed to sign out from Firebase:', err);
-      }
-    }
-  };
-
-  const handlePasscodeSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const clean = passcode.trim();
-    if (clean === 'admin123' || clean === 'counselorpro2026' || clean === 'counselorpro') {
-      setIsPasscodeAuthenticated(true);
-      setAdminEmail('admin@counselorpro.internal');
-      setAuthError('');
-    } else {
-      setAuthError('Incorrect master admin passcode. Hint: Use default setup code "admin123" or "counselorpro2026".');
-    }
-  };
-
-  const isAccessAllowed = Boolean(
-    isPasscodeAuthenticated || 
-    (currentUser && currentUser.emailVerified && adminEmail)
-  );
-
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-100 flex items-center justify-center p-0 sm:p-4" id="admin-modal-overlay">
       <div className="bg-white rounded-none sm:rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl flex flex-col h-[100dvh] sm:h-auto max-h-[100dvh] sm:max-h-[90dvh] overflow-hidden" id="admin-modal-container">
@@ -339,7 +236,7 @@ export default function AdminModal({ isOpen, onClose, onUploadSuccess }: AdminMo
             </div>
             <div>
               <h2 className="font-sans font-extrabold text-slate-900 tracking-tight text-sm sm:text-base leading-none">Database Administration</h2>
-              <p className="text-[10px] text-slate-500 font-mono mt-1">PROJECT: {firebaseConfig?.projectId || 'counselorpro-6975d'}</p>
+              <p className="text-[10px] text-slate-500 font-mono mt-1">CounselorPro Production Data Synchronization</p>
             </div>
           </div>
           <button 
@@ -352,88 +249,63 @@ export default function AdminModal({ isOpen, onClose, onUploadSuccess }: AdminMo
 
         {!isAccessAllowed ? (
           <>
-            {/* Content View - AUTH GATE */}
+            {/* Content View - AUTHORIZATION GATE */}
             <div className="p-4 sm:p-6 flex-grow overflow-y-auto space-y-6">
               <div className="text-center max-w-md mx-auto py-4 space-y-4">
                 <div className="inline-flex p-3.5 bg-slate-50 border border-slate-200/80 text-slate-700 rounded-2xl shadow-2xs">
                   <Lock className="w-8 h-8 text-slate-600" />
                 </div>
                 <div className="space-y-1.5">
-                  <h3 className="font-sans font-extrabold text-slate-900 text-lg tracking-tight">System Administrator Gate</h3>
+                  <h3 className="font-sans font-extrabold text-slate-900 text-lg tracking-tight">Super Administrator Gate</h3>
                   <p className="text-slate-500 text-xs leading-relaxed max-w-sm mx-auto">
-                    This console contains administrative pipelines, dataset health monitors, and write privileges to the college database. Authenticate below.
+                    This administrative pipeline manages college databases and cutoff records. Access is strictly restricted to the verified Super Administrator account.
                   </p>
                 </div>
               </div>
 
-              {isLoadingConfig ? (
+              {isAuthLoading ? (
                 <div className="flex flex-col items-center justify-center py-6 space-y-2">
                   <RefreshCw className="w-6 h-6 text-emerald-600 animate-spin" />
-                  <span className="text-xs text-slate-500 font-mono">Loading authentication options...</span>
+                  <span className="text-xs text-slate-500 font-mono">Verifying administrative credentials...</span>
+                </div>
+              ) : !user ? (
+                <div className="max-w-md mx-auto space-y-4 bg-slate-50 border border-slate-200/80 p-5 rounded-2xl text-center">
+                  <p className="text-xs text-slate-600">
+                    You are not signed in. Please authenticate with your authorized Super Admin account to access this console.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => openAuthModal('login')}
+                    className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded-xl text-xs tracking-wider uppercase font-mono shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <LogIn className="w-4 h-4" />
+                    <span>Sign In to Super Admin</span>
+                  </button>
                 </div>
               ) : (
-                <div className="max-w-md mx-auto space-y-5">
-                  {authError && (
-                    <div className="p-3.5 bg-red-50 border border-red-100 text-red-800 rounded-xl text-xs flex gap-2.5 items-start font-sans leading-relaxed animate-fade-in" id="auth-error-alert">
-                      <AlertCircle className="w-4.5 h-4.5 text-red-600 shrink-0 mt-0.5" />
-                      <span>{authError}</span>
-                    </div>
-                  )}
-
-                  {/* Master Passcode Form (Always available for owner/admin) */}
-                  <form onSubmit={handlePasscodeSubmit} className="space-y-3 bg-slate-50 border border-slate-200/80 p-4 rounded-xl">
-                    <label className="block text-[11px] font-bold text-slate-700 tracking-wide uppercase font-mono">
-                      Master Administrator Passcode
-                    </label>
-                    <div className="relative">
-                      <Key className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                      <input 
-                        type="password"
-                        placeholder="Enter master admin passcode..."
-                        value={passcode}
-                        onChange={(e) => setPasscode(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-mono focus:outline-emerald-600 focus:border-emerald-600"
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded-xl text-xs tracking-wider uppercase font-mono shadow-xs transition-all cursor-pointer flex items-center justify-center gap-2"
-                    >
-                      <ShieldCheck className="w-4 h-4" />
-                      <span>Unlock Console</span>
-                    </button>
-                    <p className="text-[10px] text-slate-400 text-center font-mono">
-                      Default setup passcode: <code className="text-slate-600 bg-white px-1.5 py-0.5 rounded border border-slate-200">admin123</code>
-                    </p>
-                  </form>
-
-                  {/* Google OAuth Option (if configured) */}
-                  {firebaseConfig?.apiKey && firebaseConfig?.projectId ? (
-                    <div className="space-y-3 pt-2 border-t border-slate-100">
-                      <div className="text-center text-[10px] font-mono uppercase tracking-wider text-slate-400">
-                        Or Authenticate with Google
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleGoogleSignIn}
-                        disabled={isVerifying}
-                        className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-850 active:scale-[0.99] text-white font-bold rounded-xl text-xs tracking-wider uppercase font-mono shadow-sm transition-all flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-75"
-                      >
-                        {isVerifying ? (
-                          <>
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                            <span>Verifying Session...</span>
-                          </>
-                        ) : (
-                          <>
-                            <ShieldCheck className="w-4.5 h-4.5 text-emerald-400" />
-                            <span>Sign In with Google</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  ) : null}
-
+                <div className="max-w-md mx-auto space-y-4 bg-red-50/70 border border-red-200 p-5 rounded-2xl text-center">
+                  <div className="inline-flex p-2 bg-red-100 rounded-full text-red-600 mb-1">
+                    <AlertCircle className="w-5 h-5" />
+                  </div>
+                  <h4 className="font-bold text-red-900 text-sm">Administrative Access Denied</h4>
+                  <p className="text-xs text-red-800 leading-relaxed">
+                    Signed in as <strong className="font-mono text-red-950">{user.email || user.uid}</strong>.<br />
+                    Detected Role: <span className="font-mono font-bold uppercase">{userProfile?.role || 'STUDENT'}</span>.
+                  </p>
+                  <p className="text-[11px] text-red-700 leading-relaxed">
+                    Student accounts and unassigned roles cannot view or manage database synchronization pipelines.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      await logout();
+                      onClose();
+                    }}
+                    className="mt-2 py-2 px-4 bg-red-700 hover:bg-red-800 text-white font-bold rounded-xl text-xs tracking-wider uppercase font-mono shadow-xs transition-all cursor-pointer inline-flex items-center gap-2"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Sign Out</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -442,7 +314,7 @@ export default function AdminModal({ isOpen, onClose, onUploadSuccess }: AdminMo
             <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-slate-50 text-xs text-slate-400 font-mono">
               <span className="flex items-center gap-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-pulse"></span>
-                Console Secured
+                Console Protected
               </span>
               <button 
                 onClick={onClose}
@@ -454,38 +326,27 @@ export default function AdminModal({ isOpen, onClose, onUploadSuccess }: AdminMo
           </>
         ) : (
           <>
-            {/* Content View - UNLOCKED PANEL */}
+            {/* Content View - AUTHORIZED PANEL */}
             <div className="p-6 flex-grow overflow-y-auto space-y-6">
-              <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border rounded-xl p-4 ${
-                idToken 
-                  ? 'bg-emerald-50/60 border-emerald-200 text-emerald-800' 
-                  : 'bg-amber-50/60 border-amber-200 text-amber-800'
-              }`}>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border rounded-xl p-4 bg-emerald-50/60 border-emerald-200 text-emerald-800">
                 <div className="flex gap-3">
-                  {idToken ? (
-                    <ShieldCheck className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                  ) : (
-                    <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                  )}
+                  <ShieldCheck className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
                   <div className="text-xs space-y-1">
                     <span className="font-bold block">
-                      {idToken ? `Verified Google Admin: ${adminEmail}` : `Passcode Preview Session: ${adminEmail}`}
+                      Verified Super Admin: {user?.email || user?.uid}
                     </span>
-                    <p className={`leading-relaxed ${idToken ? 'text-emerald-700' : 'text-amber-700'}`}>
-                      {idToken
-                        ? 'Authenticated with a valid Firebase ID token. Database writes will commit directly to Firestore.'
-                        : 'Offline schema inspector mode. Server-side database commits strictly require an allowlisted Google Admin session.'}
+                    <p className="leading-relaxed text-emerald-700">
+                      Authenticated with authoritative Firebase Custom Claims (<code className="font-mono bg-emerald-100 px-1 py-0.5 rounded">role: super_admin</code>). Database synchronization commits directly to Firestore.
                     </p>
                   </div>
                 </div>
                 <button
-                  onClick={handleSignOutAdmin}
-                  className={`px-2.5 py-1.5 border font-semibold rounded-lg text-[10px] font-mono flex items-center gap-1 transition-all shrink-0 cursor-pointer ${
-                    idToken
-                      ? 'bg-emerald-100/80 hover:bg-emerald-150 border-emerald-200 text-emerald-800'
-                      : 'bg-amber-100/80 hover:bg-amber-150 border-amber-200 text-amber-800'
-                  }`}
-                  title="Sign Out Admin"
+                  onClick={async () => {
+                    await logout();
+                    onClose();
+                  }}
+                  className="px-2.5 py-1.5 border font-semibold rounded-lg text-[10px] font-mono flex items-center gap-1 transition-all shrink-0 cursor-pointer bg-emerald-100/80 hover:bg-emerald-150 border-emerald-200 text-emerald-800"
+                  title="Sign Out Super Admin"
                 >
                   <LogOut className="w-3 h-3" />
                   <span>SIGN OUT</span>
@@ -598,7 +459,7 @@ export default function AdminModal({ isOpen, onClose, onUploadSuccess }: AdminMo
                       {status === 'parsing' && <div className="text-slate-500 animate-pulse">Parsing file...</div>}
                       {status === 'uploading' && <div className="text-slate-300 flex items-center gap-2">
                         <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        Committing documents to Firebase Firestore in chunks...
+                        Committing documents to Firebase Firestore via Super Admin pipeline...
                       </div>}
                     </div>
                   </div>

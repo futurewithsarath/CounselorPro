@@ -12,6 +12,7 @@ export default defineConfig(() => {
       },
     },
     build: {
+      sourcemap: false,
       chunkSizeWarningLimit: 600,
       modulePreload: {
         resolveDependencies(filename, deps) {

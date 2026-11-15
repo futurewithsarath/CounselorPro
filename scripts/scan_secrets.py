@@ -25,7 +25,6 @@ ALLOWED_BENIGN = {
     "owner@example.com",
     "student@example.com",
     "password123",
-    "admin123",
     "wrong-password",
     "missing-password",
     "weak-password"

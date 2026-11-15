@@ -93,66 +93,124 @@ export default function AdminDashboard({ onClose }: AdminDashboardProps) {
     };
   }, [collegesList]);
 
-  // CRUD Handlers that synchronize with memory, localStorage & live collections
+  // CRUD Handlers that synchronize with backend APIs, Firestore, & live collections
   const handleAddCollege = async (newCol: Partial<College>) => {
-    const id = `${(newCol.exam || 'AP_EAPCET').toLowerCase()}-${(newCol.code || 'COL').toLowerCase()}-${(newCol.branch || 'CSE').toLowerCase()}-${Date.now()}`;
-    const college: College = {
-      id,
-      code: (newCol.code || 'COL').toUpperCase(),
-      name: newCol.name || 'New College',
-      branch: newCol.branch || 'CSE',
-      district: newCol.district || 'Unknown',
-      region: newCol.region || 'OU',
-      type: newCol.type || 'Private-Autonomous',
-      fee: newCol.fee || null,
-      cutoffOC: newCol.cutoffOC || 25000,
-      cutoffBC: newCol.cutoffBC || 35000,
-      cutoffSCST: newCol.cutoffSCST || 50000,
-      exam: (newCol.exam || 'AP_EAPCET') as any,
-      stream: newCol.stream || 'MPC',
-      year: newCol.year || 2025,
-      affiliatingUniversity: newCol.affiliatingUniversity || null,
-      place: newCol.place || null
-    };
-
-    // Update in-memory collections
-    COLLEGES_DB.unshift(college);
-    setCollegesList([college, ...collegesList]);
-
-    // Save in custom admin storage so it persists across reloads
     try {
-      const savedCustom = localStorage.getItem('counselor_custom_colleges');
-      const customList: College[] = savedCustom ? JSON.parse(savedCustom) : [];
-      localStorage.setItem('counselor_custom_colleges', JSON.stringify([college, ...customList]));
-    } catch (e) {
-      console.warn('Could not store custom college:', e);
+      const token = user ? await user.getIdToken(true) : null;
+      if (!token) {
+        throw new Error('Authentication required. Please sign in as Super Admin.');
+      }
+
+      const res = await fetch('/api/admin/colleges', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(newCol)
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to add college record.');
+      }
+
+      const college: College = data.college;
+
+      // Update in-memory collections and local state
+      COLLEGES_DB.unshift(college);
+      setCollegesList(prev => [college, ...prev.filter(c => c.id !== college.id)]);
+
+      // Purge client cache so student modules get fresh data immediately
+      clearCollegesClientCache();
+      return college;
+    } catch (e: any) {
+      console.error('[ADMIN ADD COLLEGE ERROR]', e);
+      throw e;
     }
   };
 
   const handleUpdateCollege = async (id: string, updates: Partial<College>) => {
-    const updated = collegesList.map(c => {
-      if (c.id === id) {
-        return { ...c, ...updates };
+    try {
+      const token = user ? await user.getIdToken(true) : null;
+      if (!token) {
+        throw new Error('Authentication required. Please sign in as Super Admin.');
       }
-      return c;
-    });
 
-    setCollegesList(updated);
+      const res = await fetch(`/api/admin/colleges/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(updates)
+      });
 
-    // Update COLLEGES_DB in-memory
-    const dbIndex = COLLEGES_DB.findIndex(c => c.id === id);
-    if (dbIndex >= 0) {
-      COLLEGES_DB[dbIndex] = { ...COLLEGES_DB[dbIndex], ...updates };
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update college record.');
+      }
+
+      const updated = collegesList.map(c => {
+        if (c.id === id) {
+          return { ...c, ...updates };
+        }
+        return c;
+      });
+
+      setCollegesList(updated);
+
+      // Update COLLEGES_DB in-memory
+      const dbIndex = COLLEGES_DB.findIndex(c => c.id === id);
+      if (dbIndex >= 0) {
+        COLLEGES_DB[dbIndex] = { ...COLLEGES_DB[dbIndex], ...updates };
+      }
+
+      clearCollegesClientCache();
+    } catch (e: any) {
+      console.error('[ADMIN UPDATE COLLEGE ERROR]', e);
+      throw e;
     }
   };
 
   const handleDeleteCollege = async (id: string) => {
-    const filtered = collegesList.filter(c => c.id !== id);
-    setCollegesList(filtered);
+    try {
+      const token = user ? await user.getIdToken(true) : null;
+      if (!token) {
+        throw new Error('Authentication required. Please sign in as Super Admin.');
+      }
 
-    const dbIndex = COLLEGES_DB.findIndex(c => c.id === id);
-    if (dbIndex >= 0) {
-      COLLEGES_DB.splice(dbIndex, 1);
+      const collegeToDelete = collegesList.find(c => c.id === id);
+      const datasetId = collegeToDelete?.exam
+        ? `${collegeToDelete.exam}_${collegeToDelete.stream || 'MPC'}_${collegeToDelete.year || 2025}`
+        : undefined;
+
+      const deleteUrl = `/api/admin/colleges/${encodeURIComponent(id)}${datasetId ? `?datasetId=${encodeURIComponent(datasetId)}` : ''}`;
+
+      const res = await fetch(deleteUrl, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to delete college record from database.');
+      }
+
+      // Update local state and in-memory collections
+      setCollegesList(prev => prev.filter(c => c.id !== id));
+      const dbIndex = COLLEGES_DB.findIndex(c => c.id === id);
+      if (dbIndex >= 0) {
+        COLLEGES_DB.splice(dbIndex, 1);
+      }
+
+      // Invalidate client cache so public search immediately excludes this college
+      clearCollegesClientCache();
+    } catch (e: any) {
+      console.error('[ADMIN DELETE COLLEGE ERROR]', e);
+      throw e;
     }
   };
 
@@ -164,13 +222,37 @@ export default function AdminDashboard({ onClose }: AdminDashboardProps) {
   };
 
   const handlePublishDataset = async (datasetId: string, records: any[], metadata: any) => {
-    // Synchronize to COLLEGES_DB
-    COLLEGES_DB.length = 0;
-    records.forEach(r => COLLEGES_DB.push(r));
-    setCollegesList([...records]);
+    try {
+      const token = user ? await user.getIdToken(true) : null;
+      if (!token) {
+        throw new Error('Authentication required. Please sign in as Super Admin.');
+      }
 
-    // Clear client cache so student modules get fresh data
-    clearCollegesClientCache();
+      const res = await fetch('/api/admin/upload-colleges', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ metadata, colleges: records })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to publish dataset to server.');
+      }
+
+      // Synchronize to COLLEGES_DB
+      COLLEGES_DB.length = 0;
+      records.forEach(r => COLLEGES_DB.push(r));
+      setCollegesList([...records]);
+
+      // Clear client cache so student modules get fresh data
+      clearCollegesClientCache();
+    } catch (e: any) {
+      console.error('[ADMIN PUBLISH DATASET ERROR]', e);
+      throw e;
+    }
   };
 
   const handleClearCache = () => {

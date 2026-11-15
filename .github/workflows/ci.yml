@@ -1,0 +1,65 @@
+name: CounselorPro CI & Production Security Verification
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint, Build & Security Test Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: TypeScript Typecheck
+        run: npx tsc --noEmit
+
+      - name: Production Build
+        run: npm run build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY || 'AIzaSyAgfXQFSoGjvSxmskHK4tu97Tt0DopngAg' }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN || 'counselorpro.firebaseapp.com' }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID || 'counselorpro' }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID || '1:289926335025:web:a061b899b2a0a68476a310' }}
+
+      - name: Security Regressions & RBAC Verification
+        run: |
+          npx tsx scripts/test_security_fixes.ts
+          npx tsx scripts/test_security_rbac.ts
+          npx tsx scripts/test_admin_authorization_regression.ts
+          npx tsx scripts/test_college_sync_and_management.ts
+          npx tsx scripts/test_firestore_college_persistence.ts
+
+      - name: Counselling & Cutoff Core Logic Verification
+        run: |
+          npx tsx scripts/test_jee_counselling_logic.ts
+          npx tsx scripts/test_neet_counselling_logic.ts
+
+      - name: Vercel Production Readiness Verification
+        run: npx tsx scripts/verify_vercel_production_readiness.ts
+
+      - name: Comprehensive Security Scenarios Verification
+        run: |
+          npx tsx scripts/test_comprehensive_security_scenarios.ts
+          npx tsx scripts/test_firestore_rules_simulation.ts
+          python scripts/scan_secrets.py
+        env:
+          SUPER_ADMIN_UID: ${{ secrets.SUPER_ADMIN_UID || '2tqT8SPAuqh5H3aw8hBxwsAjgCc2' }}

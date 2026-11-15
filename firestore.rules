@@ -61,11 +61,27 @@ rules_version = '2';
 //            Super Admin can update any fields including role.
 //   - Delete: Document owner or Super Admin
 // Subcollections under /users/{userId}:
-//   - counsellingSessions/{sessionId}: Student saved counseling sessions (read, write: isOwner(userId) || isSuperAdmin())
-//   - savedChoices/{choiceId}: Student saved choice lists (read, write: isOwner(userId) || isSuperAdmin())
-//   - practiceResults/{resultId}: Student practice simulation results (read, write: isOwner(userId) || isSuperAdmin())
-//   - reports/{reportId}: Student generated reports (read, write: isOwner(userId) || isSuperAdmin())
-// Fields:
+//   - counsellingSessions/{sessionId}: Student saved counseling sessions
+//       * Read / Delete: isOwner(userId) || isSuperAdmin()
+//       * Create: isAuthenticated && ((isOwner(userId) && request.resource.data.ownerUid == userId && isValidCounsellingSession(data)) || isSuperAdmin())
+//       * Update: isAuthenticated && ((isOwner(userId) && request.resource.data.ownerUid == userId && resource.data.ownerUid == userId && request.resource.data.ownerUid == resource.data.ownerUid && (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt) && isValidCounsellingSession(data)) || isSuperAdmin())
+//       * Fields: id, ownerUid, sessionId (opt), title (opt), exam, stream, rank, category, gender, region, choices, allottedCollege (opt), createdAt, updatedAt
+//   - savedChoices/{choiceId}: Student saved choice lists and draft option selections
+//       * Read / Delete: isOwner(userId) || isSuperAdmin()
+//       * Create: isAuthenticated && ((isOwner(userId) && request.resource.data.ownerUid == userId && isValidSavedChoice(data)) || isSuperAdmin())
+//       * Update: isAuthenticated && ((isOwner(userId) && request.resource.data.ownerUid == userId && resource.data.ownerUid == userId && request.resource.data.ownerUid == resource.data.ownerUid && (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt) && isValidSavedChoice(data)) || isSuperAdmin())
+//       * Fields: id, ownerUid, title (opt), name (opt), exam, stream (opt), step (opt), profile (opt), selectedOptions (opt), choices (opt), rank (opt), category (opt), region (opt), createdAt (opt), updatedAt (opt)
+//   - practiceResults/{resultId}: Student practice simulation results and mock allotment outcomes
+//       * Read / Delete: isOwner(userId) || isSuperAdmin()
+//       * Create: isAuthenticated && ((isOwner(userId) && request.resource.data.ownerUid == userId && isValidPracticeResult(data)) || isSuperAdmin())
+//       * Update: isAuthenticated && ((isOwner(userId) && request.resource.data.ownerUid == userId && resource.data.ownerUid == userId && request.resource.data.ownerUid == resource.data.ownerUid && (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt) && isValidPracticeResult(data)) || isSuperAdmin())
+//       * Fields: id, ownerUid, sessionId (opt), exam, stream (opt), rank, category (opt), gender (opt), region (opt), allotted (opt), allottedCollege (opt), optionNumber (opt), categoryUsed (opt), allotmentType (opt), message (opt), choices (opt), createdAt (opt), updatedAt (opt)
+//   - reports/{reportId}: Student generated reports and export metadata
+//       * Read / Delete: isOwner(userId) || isSuperAdmin()
+//       * Create: isAuthenticated && ((isOwner(userId) && request.resource.data.ownerUid == userId && isValidReportDoc(data)) || isSuperAdmin())
+//       * Update: isAuthenticated && ((isOwner(userId) && request.resource.data.ownerUid == userId && resource.data.ownerUid == userId && request.resource.data.ownerUid == resource.data.ownerUid && (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt) && isValidReportDoc(data)) || isSuperAdmin())
+//       * Fields: id, reportId (opt), ownerUid, title (opt), reportType (opt), exam, stream (opt), rank (opt), category (opt), region (opt), sessionId (opt), filename (opt), downloadUrl (opt), fileSize (opt), choices (opt), metadata (opt), createdAt (opt), updatedAt (opt)
+// User Document Fields:
 //   - uid: string (required, immutable, matches document ID and auth UID, max 128 chars)
 //   - email: string | null (optional, valid email format, max 100 chars)
 //   - displayName: string | null (optional, max 100 chars)
@@ -94,7 +110,7 @@ rules_version = '2';
 //   - rank: number (required, student mock rank, >= 1, <= 2000000)
 //   - category: string (required, reservation category, max 50 chars)
 //   - gender: string (required, max 20 chars)
-//   - region: string (required, admissions region, max 20 chars)
+//   - region: string (required, admissions region, max 50 chars)
 //   - choices: list (required, prioritized college options, max 200 items)
 //   - allottedCollege: map | null (optional, simulation allotment result)
 //   - createdAt: timestamp | string (required, immutable)
@@ -222,7 +238,7 @@ service cloud.firestore {
         (!('lastLoginAt' in data) || data.lastLoginAt == null || isValidTimestampOrDateString(data.lastLoginAt));
     }
 
-    // Validate Practice Session document integrity
+    // Validate Practice Session document integrity (root collection)
     function isValidPracticeSession(data) {
       return hasOnlyAllowedFields([
           'id', 'ownerUid', 'title', 'exam', 'stream', 'rank',
@@ -236,7 +252,7 @@ service cloud.firestore {
         data.rank is number && data.rank >= 1 && data.rank <= 2000000 &&
         data.category is string && data.category.size() > 0 && data.category.size() <= 50 &&
         data.gender is string && data.gender.size() > 0 && data.gender.size() <= 20 &&
-        data.region is string && data.region.size() > 0 && data.region.size() <= 20 &&
+        data.region is string && data.region.size() > 0 && data.region.size() <= 50 &&
         data.choices is list && data.choices.size() <= 200 &&
         (!('title' in data) || data.title == null || (data.title is string && data.title.size() <= 150)) &&
         (!('allottedCollege' in data) || data.allottedCollege == null || data.allottedCollege is map) &&
@@ -273,6 +289,112 @@ service cloud.firestore {
         (!('step' in data) || data.step == null || (data.step is string && data.step.size() <= 50)) &&
         (!('profile' in data) || data.profile == null || data.profile is map) &&
         (!('selectedOptions' in data) || data.selectedOptions == null || (data.selectedOptions is list && data.selectedOptions.size() <= 200)) &&
+        (!('updatedAt' in data) || data.updatedAt == null || isValidTimestampOrDateString(data.updatedAt));
+    }
+
+    // Validate Counselling Session subcollection document integrity
+    function isValidCounsellingSession(data) {
+      return hasOnlyAllowedFields([
+          'id', 'ownerUid', 'sessionId', 'title', 'exam', 'stream', 'rank',
+          'category', 'gender', 'region', 'choices', 'allottedCollege', 'createdAt', 'updatedAt'
+        ]) &&
+        hasRequiredFields(['id', 'ownerUid', 'exam', 'stream', 'rank', 'category', 'gender', 'region', 'choices']) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+        data.ownerUid is string && data.ownerUid.size() > 0 && data.ownerUid.size() <= 128 &&
+        data.exam is string && data.exam.size() > 0 && data.exam.size() <= 50 &&
+        data.stream is string && data.stream.size() > 0 && data.stream.size() <= 50 &&
+        data.rank is number && data.rank >= 1 && data.rank <= 2000000 &&
+        data.category is string && data.category.size() > 0 && data.category.size() <= 50 &&
+        data.gender is string && data.gender.size() > 0 && data.gender.size() <= 20 &&
+        data.region is string && data.region.size() > 0 && data.region.size() <= 50 &&
+        data.choices is list && data.choices.size() <= 200 &&
+        (!('sessionId' in data) || data.sessionId == null || (data.sessionId is string && data.sessionId.size() <= 128)) &&
+        (!('title' in data) || data.title == null || (data.title is string && data.title.size() <= 150)) &&
+        (!('allottedCollege' in data) || data.allottedCollege == null || data.allottedCollege is map) &&
+        (!('createdAt' in data) || isValidTimestampOrDateString(data.createdAt)) &&
+        (!('updatedAt' in data) || data.updatedAt == null || isValidTimestampOrDateString(data.updatedAt));
+    }
+
+    // Validate Saved Choice subcollection document integrity
+    function isValidSavedChoice(data) {
+      return hasOnlyAllowedFields([
+          'id', 'ownerUid', 'title', 'name', 'exam', 'stream', 'step',
+          'profile', 'selectedOptions', 'choices', 'rank', 'category', 'region',
+          'createdAt', 'updatedAt'
+        ]) &&
+        hasRequiredFields(['id', 'ownerUid', 'exam']) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+        data.ownerUid is string && data.ownerUid.size() > 0 && data.ownerUid.size() <= 128 &&
+        data.exam is string && data.exam.size() > 0 && data.exam.size() <= 50 &&
+        (!('title' in data) || data.title == null || (data.title is string && data.title.size() <= 150)) &&
+        (!('name' in data) || data.name == null || (data.name is string && data.name.size() <= 150)) &&
+        (!('stream' in data) || data.stream == null || (data.stream is string && data.stream.size() <= 50)) &&
+        (!('step' in data) || data.step == null || (data.step is string && data.step.size() <= 50)) &&
+        (!('category' in data) || data.category == null || (data.category is string && data.category.size() <= 50)) &&
+        (!('region' in data) || data.region == null || (data.region is string && data.region.size() <= 50)) &&
+        (!('rank' in data) || data.rank == null || (data.rank is number && data.rank >= 1 && data.rank <= 2000000)) &&
+        (!('profile' in data) || data.profile == null || data.profile is map) &&
+        (!('selectedOptions' in data) || data.selectedOptions == null || (data.selectedOptions is list && data.selectedOptions.size() <= 200)) &&
+        (!('choices' in data) || data.choices == null || (data.choices is list && data.choices.size() <= 200)) &&
+        (!('createdAt' in data) || isValidTimestampOrDateString(data.createdAt)) &&
+        (!('updatedAt' in data) || data.updatedAt == null || isValidTimestampOrDateString(data.updatedAt));
+    }
+
+    // Validate Practice Result subcollection document integrity
+    function isValidPracticeResult(data) {
+      return hasOnlyAllowedFields([
+          'id', 'ownerUid', 'sessionId', 'exam', 'stream', 'rank',
+          'category', 'gender', 'region', 'allotted', 'allottedCollege',
+          'optionNumber', 'categoryUsed', 'allotmentType', 'message',
+          'choices', 'createdAt', 'updatedAt'
+        ]) &&
+        hasRequiredFields(['id', 'ownerUid', 'exam', 'rank']) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+        data.ownerUid is string && data.ownerUid.size() > 0 && data.ownerUid.size() <= 128 &&
+        data.exam is string && data.exam.size() > 0 && data.exam.size() <= 50 &&
+        data.rank is number && data.rank >= 1 && data.rank <= 2000000 &&
+        (!('sessionId' in data) || data.sessionId == null || (data.sessionId is string && data.sessionId.size() <= 128)) &&
+        (!('stream' in data) || data.stream == null || (data.stream is string && data.stream.size() <= 50)) &&
+        (!('category' in data) || data.category == null || (data.category is string && data.category.size() <= 50)) &&
+        (!('gender' in data) || data.gender == null || (data.gender is string && data.gender.size() <= 20)) &&
+        (!('region' in data) || data.region == null || (data.region is string && data.region.size() <= 50)) &&
+        (!('allotted' in data) || data.allotted == null || data.allotted is bool) &&
+        (!('allottedCollege' in data) || data.allottedCollege == null || data.allottedCollege is map) &&
+        (!('optionNumber' in data) || data.optionNumber == null || (data.optionNumber is number && data.optionNumber >= 1 && data.optionNumber <= 1000)) &&
+        (!('categoryUsed' in data) || data.categoryUsed == null || (data.categoryUsed is string && data.categoryUsed.size() <= 50)) &&
+        (!('allotmentType' in data) || data.allotmentType == null || (data.allotmentType is string && data.allotmentType.size() <= 100)) &&
+        (!('message' in data) || data.message == null || (data.message is string && data.message.size() <= 500)) &&
+        (!('choices' in data) || data.choices == null || (data.choices is list && data.choices.size() <= 200)) &&
+        (!('createdAt' in data) || isValidTimestampOrDateString(data.createdAt)) &&
+        (!('updatedAt' in data) || data.updatedAt == null || isValidTimestampOrDateString(data.updatedAt));
+    }
+
+    // Validate Report subcollection document integrity
+    function isValidReportDoc(data) {
+      return hasOnlyAllowedFields([
+          'id', 'reportId', 'ownerUid', 'title', 'reportType', 'exam', 'stream',
+          'rank', 'category', 'region', 'sessionId', 'filename',
+          'downloadUrl', 'fileSize', 'choices', 'metadata',
+          'createdAt', 'updatedAt'
+        ]) &&
+        hasRequiredFields(['id', 'ownerUid', 'exam']) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+        data.ownerUid is string && data.ownerUid.size() > 0 && data.ownerUid.size() <= 128 &&
+        data.exam is string && data.exam.size() > 0 && data.exam.size() <= 50 &&
+        (!('reportId' in data) || data.reportId == null || (data.reportId is string && data.reportId.size() <= 128)) &&
+        (!('title' in data) || data.title == null || (data.title is string && data.title.size() <= 150)) &&
+        (!('reportType' in data) || data.reportType == null || (data.reportType is string && data.reportType.size() <= 50)) &&
+        (!('stream' in data) || data.stream == null || (data.stream is string && data.stream.size() <= 50)) &&
+        (!('rank' in data) || data.rank == null || (data.rank is number && data.rank >= 1 && data.rank <= 2000000)) &&
+        (!('category' in data) || data.category == null || (data.category is string && data.category.size() <= 50)) &&
+        (!('region' in data) || data.region == null || (data.region is string && data.region.size() <= 50)) &&
+        (!('sessionId' in data) || data.sessionId == null || (data.sessionId is string && data.sessionId.size() <= 128)) &&
+        (!('filename' in data) || data.filename == null || (data.filename is string && data.filename.size() <= 200)) &&
+        (!('downloadUrl' in data) || data.downloadUrl == null || (data.downloadUrl is string && data.downloadUrl.size() <= 500)) &&
+        (!('fileSize' in data) || data.fileSize == null || (data.fileSize is number && data.fileSize >= 0)) &&
+        (!('choices' in data) || data.choices == null || (data.choices is list && data.choices.size() <= 200)) &&
+        (!('metadata' in data) || data.metadata == null || data.metadata is map) &&
+        (!('createdAt' in data) || isValidTimestampOrDateString(data.createdAt)) &&
         (!('updatedAt' in data) || data.updatedAt == null || isValidTimestampOrDateString(data.updatedAt));
     }
 
@@ -338,22 +460,98 @@ service cloud.firestore {
       // Subcollections:
       // 4a. Counselling Sessions subcollection
       match /counsellingSessions/{sessionId} {
-        allow read, write: if isOwner(userId) || isSuperAdmin();
+        allow read: if isOwner(userId) || isSuperAdmin();
+
+        allow create: if isAuthenticated() && (
+          (isOwner(userId) &&
+           request.resource.data.ownerUid == userId &&
+           isValidCounsellingSession(request.resource.data)) ||
+          isSuperAdmin()
+        );
+
+        allow update: if isAuthenticated() && (
+          (isOwner(userId) &&
+           request.resource.data.ownerUid == userId &&
+           resource.data.ownerUid == userId &&
+           request.resource.data.ownerUid == resource.data.ownerUid &&
+           (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt) &&
+           isValidCounsellingSession(request.resource.data)) ||
+          isSuperAdmin()
+        );
+
+        allow delete: if isOwner(userId) || isSuperAdmin();
       }
 
       // 4b. Saved Choices subcollection
       match /savedChoices/{choiceId} {
-        allow read, write: if isOwner(userId) || isSuperAdmin();
+        allow read: if isOwner(userId) || isSuperAdmin();
+
+        allow create: if isAuthenticated() && (
+          (isOwner(userId) &&
+           request.resource.data.ownerUid == userId &&
+           isValidSavedChoice(request.resource.data)) ||
+          isSuperAdmin()
+        );
+
+        allow update: if isAuthenticated() && (
+          (isOwner(userId) &&
+           request.resource.data.ownerUid == userId &&
+           resource.data.ownerUid == userId &&
+           request.resource.data.ownerUid == resource.data.ownerUid &&
+           (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt) &&
+           isValidSavedChoice(request.resource.data)) ||
+          isSuperAdmin()
+        );
+
+        allow delete: if isOwner(userId) || isSuperAdmin();
       }
 
       // 4c. Practice Results subcollection
       match /practiceResults/{resultId} {
-        allow read, write: if isOwner(userId) || isSuperAdmin();
+        allow read: if isOwner(userId) || isSuperAdmin();
+
+        allow create: if isAuthenticated() && (
+          (isOwner(userId) &&
+           request.resource.data.ownerUid == userId &&
+           isValidPracticeResult(request.resource.data)) ||
+          isSuperAdmin()
+        );
+
+        allow update: if isAuthenticated() && (
+          (isOwner(userId) &&
+           request.resource.data.ownerUid == userId &&
+           resource.data.ownerUid == userId &&
+           request.resource.data.ownerUid == resource.data.ownerUid &&
+           (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt) &&
+           isValidPracticeResult(request.resource.data)) ||
+          isSuperAdmin()
+        );
+
+        allow delete: if isOwner(userId) || isSuperAdmin();
       }
 
       // 4d. Reports subcollection
       match /reports/{reportId} {
-        allow read, write: if isOwner(userId) || isSuperAdmin();
+        allow read: if isOwner(userId) || isSuperAdmin();
+
+        allow create: if isAuthenticated() && (
+          (isOwner(userId) &&
+           request.resource.data.ownerUid == userId &&
+           isValidReportDoc(request.resource.data)) ||
+          isSuperAdmin()
+        );
+
+        allow update: if isAuthenticated() && (
+          (isOwner(userId) &&
+           request.resource.data.ownerUid == userId &&
+           resource.data.ownerUid == userId &&
+           request.resource.data.ownerUid == resource.data.ownerUid &&
+           (!('createdAt' in resource.data) || request.resource.data.createdAt == resource.data.createdAt) &&
+           isValidReportDoc(request.resource.data)) ||
+          isSuperAdmin()
+        );
+
+        allow delete: if isOwner(userId) || isSuperAdmin();
       }
     }
 

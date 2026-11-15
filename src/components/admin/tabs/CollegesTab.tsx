@@ -13,15 +13,16 @@ import {
   MapPin,
   GraduationCap,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  RefreshCw
 } from 'lucide-react';
 import { College } from '../../../types';
 
 interface CollegesTabProps {
   colleges: College[];
-  onAddCollege: (college: Partial<College>) => Promise<void>;
-  onUpdateCollege: (id: string, updates: Partial<College>) => Promise<void>;
-  onDeleteCollege: (id: string) => Promise<void>;
+  onAddCollege: (college: Partial<College>) => Promise<any>;
+  onUpdateCollege: (id: string, updates: Partial<College>) => Promise<any>;
+  onDeleteCollege: (id: string) => Promise<any>;
 }
 
 export default function CollegesTab({ 
@@ -39,10 +40,27 @@ export default function CollegesTab({
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 15;
 
-  // Modals state
+  // Modals state & feedback
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingCollege, setEditingCollege] = useState<College | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const deletingCollege = useMemo(() => {
+    if (!deletingId) return null;
+    return colleges.find(c => c.id === deletingId) || null;
+  }, [colleges, deletingId]);
+
+  const showToast = (type: 'success' | 'error', message: string) => {
+    setToast({ type, message });
+    setTimeout(() => {
+      setToast(prev => (prev?.message === message ? null : prev));
+    }, 6000);
+  };
 
   // Form states for Add/Edit
   const [formState, setFormState] = useState<Partial<College>>({
@@ -95,30 +113,73 @@ export default function CollegesTab({
       type: 'Private-Autonomous',
       exam: 'AP_EAPCET',
       stream: 'MPC',
+      branch: 'CSE',
       fee: 50000,
+      cutoffOC: 25000,
+      cutoffBC: 35000,
+      cutoffSCST: 50000,
       affiliatingUniversity: '',
       place: ''
     });
+    setSubmitError(null);
     setIsAddModalOpen(true);
   };
 
   const handleOpenEdit = (college: College) => {
     setEditingCollege(college);
     setFormState({ ...college });
+    setSubmitError(null);
   };
 
   const handleSaveAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formState.code || !formState.name) return;
-    await onAddCollege(formState);
-    setIsAddModalOpen(false);
+    if (!formState.code || !formState.name) {
+      setSubmitError('Both College Code and College Name are required.');
+      return;
+    }
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      await onAddCollege(formState);
+      setIsAddModalOpen(false);
+      showToast('success', `College "${formState.code?.toUpperCase()} - ${formState.name}" was successfully registered and synchronized with the live website.`);
+    } catch (err: any) {
+      setSubmitError(err.message || 'Failed to save college to database.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletingId) return;
+    const target = deletingCollege;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await onDeleteCollege(deletingId);
+      setDeletingId(null);
+      showToast('success', `College "${target?.code || deletingId}" was permanently deleted and removed from the public website.`);
+    } catch (err: any) {
+      setDeleteError(err.message || 'Failed to delete college from database.');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingCollege || !formState.code || !formState.name) return;
-    await onUpdateCollege(editingCollege.id, formState);
-    setEditingCollege(null);
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      await onUpdateCollege(editingCollege.id, formState);
+      setEditingCollege(null);
+      showToast('success', `College "${formState.code?.toUpperCase()}" was successfully updated and synchronized.`);
+    } catch (err: any) {
+      setSubmitError(err.message || 'Failed to update college in database.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleExportCSV = () => {
@@ -148,6 +209,34 @@ export default function CollegesTab({
 
   return (
     <div className="space-y-4">
+      {/* Toast Notification Banner */}
+      {toast && (
+        <div className={`p-4 rounded-2xl border flex items-center justify-between text-xs font-semibold animate-in fade-in slide-in-from-top-2 duration-200 shadow-xs ${
+          toast.type === 'success'
+            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+            : 'bg-red-50 text-red-800 border-red-200'
+        }`}>
+          <div className="flex items-center gap-2.5">
+            {toast.type === 'success' ? (
+              <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                <Check className="w-3.5 h-3.5" />
+              </div>
+            ) : (
+              <div className="w-6 h-6 rounded-lg bg-red-600 text-white flex items-center justify-center shrink-0">
+                <AlertCircle className="w-3.5 h-3.5" />
+              </div>
+            )}
+            <span>{toast.message}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            className="p-1 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
       {/* Action Header & Filters */}
       <div className="p-4 bg-white rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         {/* Search Input */}
@@ -481,20 +570,56 @@ export default function CollegesTab({
                 />
               </div>
 
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => { setIsAddModalOpen(false); setEditingCollege(null); }}
-                  className="px-4 py-2 border border-slate-200 text-slate-600 font-semibold rounded-xl hover:bg-slate-50 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-xs cursor-pointer"
-                >
-                  {editingCollege ? 'Save Changes' : 'Create College'}
-                </button>
+              {submitError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                  <span>{submitError}</span>
+                </div>
+              )}
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                {editingCollege ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const targetId = editingCollege.id;
+                      setEditingCollege(null);
+                      setDeletingId(targetId);
+                      setDeleteError(null);
+                    }}
+                    className="px-3 py-2 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete Record</span>
+                  </button>
+                ) : (
+                  <div />
+                )}
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={() => { setIsAddModalOpen(false); setEditingCollege(null); setSubmitError(null); }}
+                    className="px-4 py-2 border border-slate-200 text-slate-600 font-semibold rounded-xl hover:bg-slate-50 disabled:opacity-50 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <span>{editingCollege ? 'Save Changes' : 'Create College'}</span>
+                    )}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -504,31 +629,76 @@ export default function CollegesTab({
       {/* DELETE CONFIRMATION DIALOG */}
       {deletingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <div className="w-full max-w-sm bg-white rounded-2xl p-6 shadow-2xl border border-slate-100 text-center">
+          <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-2xl border border-slate-100 text-center animate-in fade-in zoom-in-95 duration-150">
             <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-3">
               <Trash2 className="w-6 h-6" />
             </div>
-            <h3 className="font-bold text-sm text-slate-900">Confirm Deletion</h3>
+            <h3 className="font-bold text-base text-slate-900">Confirm College Deletion</h3>
             <p className="text-xs text-slate-500 mt-1">
-              Are you sure you want to remove this college from the database? This change will be reflected in live student counseling lists.
+              Are you sure you want to permanently remove this college record from the database?
             </p>
-            <div className="mt-5 flex items-center justify-center gap-2">
+
+            {/* Target College Details Card */}
+            {deletingCollege && (
+              <div className="my-4 p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl text-left space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 bg-slate-200 text-slate-800 rounded font-mono font-bold text-xs">
+                    {deletingCollege.code}
+                  </span>
+                  <span className="font-bold text-xs text-slate-900 truncate">
+                    {deletingCollege.name}
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-500 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span>Branch: <strong className="text-slate-700">{deletingCollege.branch}</strong></span>
+                  <span>Exam: <strong className="text-slate-700">{deletingCollege.exam?.replace('_', ' ')}</strong></span>
+                  {deletingCollege.stream && <span>Stream: <strong className="text-slate-700">{deletingCollege.stream}</strong></span>}
+                  {deletingCollege.district && <span>District: <strong className="text-slate-700">{deletingCollege.district}</strong></span>}
+                </div>
+                <div className="text-[10px] font-mono text-slate-400 break-all">
+                  ID: {deletingCollege.id}
+                </div>
+              </div>
+            )}
+
+            <div className="p-3 bg-red-50/80 border border-red-200 rounded-xl text-left mb-4">
+              <p className="text-[11px] text-red-800 leading-relaxed font-medium">
+                ⚠️ <strong>Live Portal Impact:</strong> This college and its associated cutoff benchmarks will be immediately purged from public student search, choice filling, and mock allotment simulators.
+              </p>
+            </div>
+
+            {deleteError && (
+              <div className="p-2.5 mb-3 bg-red-100 text-red-700 text-xs rounded-xl font-medium">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="flex items-center justify-center gap-2">
               <button
                 type="button"
-                onClick={() => setDeletingId(null)}
-                className="px-4 py-2 border border-slate-200 text-slate-600 text-xs font-semibold rounded-xl hover:bg-slate-50 cursor-pointer"
+                disabled={isDeleting}
+                onClick={() => { setDeletingId(null); setDeleteError(null); }}
+                className="flex-1 py-2.5 px-4 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-50 disabled:opacity-50 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={async () => {
-                  await onDeleteCollege(deletingId);
-                  setDeletingId(null);
-                }}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
+                disabled={isDeleting}
+                onClick={handleConfirmDelete}
+                className="flex-1 py-2.5 px-4 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5"
               >
-                Delete College
+                {isDeleting ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete College</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

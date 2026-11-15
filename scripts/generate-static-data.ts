@@ -5,7 +5,7 @@ import { hasValidCutoffData } from "../src/data/datasetValidation";
 /** Validate committed, versioned datasets without fabricating or mutating admissions data. */
 export function generateStaticData() {
   const directory = path.join(process.cwd(), "public", "data");
-  const files = fs.readdirSync(directory).filter(file => file.endsWith(".json"));
+  const files = fs.readdirSync(directory).filter(file => file.endsWith(".json") && file !== "dynamic_colleges.json");
   for (const file of files) {
     const payload = JSON.parse(fs.readFileSync(path.join(directory, file), "utf8"));
     if (payload?.metadata?.exam === 'NEET_UG' || file.startsWith('NEET_UG')) {

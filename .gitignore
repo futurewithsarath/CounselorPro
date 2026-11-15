@@ -16,4 +16,6 @@ __pycache__/
 *.pyc
 *.pdf
 public/test_output/
+test_screenshots/
+
 

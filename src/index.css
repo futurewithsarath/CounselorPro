@@ -5,6 +5,8 @@ html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
   background: #f8fafc;
+  overflow-x: clip;
+  max-width: 100%;
 }
 
 body {

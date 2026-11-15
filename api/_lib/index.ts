@@ -50,7 +50,11 @@ export function getFirestoreDb() {
       firestoreDb = getFirestore(adminApp);
       console.log("Firebase Admin successfully initialized on the serverless function.");
     } else {
-      console.log("Firebase credentials not fully set up in environment. Firestore features will fall back gracefully.");
+      const defaultProjectId = process.env.FIREBASE_PROJECT_ID || "counselorpro";
+      if (getApps().length === 0) {
+        initializeApp({ projectId: defaultProjectId });
+      }
+      console.log("Firebase credentials not fully set up in environment. Default app initialized for token verification. Firestore features will fall back gracefully.");
     }
   } catch (err) {
     console.log("Failed to initialize Firebase Admin in serverless lib:", err);

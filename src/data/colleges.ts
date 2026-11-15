@@ -15,6 +15,15 @@ export function clearCollegesClientCache(): void {
   COLLEGES_DB.length = 0;
 }
 
+export async function invalidateCollegesCacheAndReload(
+  exam: ExamType = 'AP_EAPCET',
+  stream: 'MPC' | 'BiPC' = 'MPC',
+  year: number = 2025
+): Promise<number> {
+  clearCollegesClientCache();
+  return loadRealCollegesForExam(exam, stream, year);
+}
+
 function mapDistrictAbbr(dist: string): string {
   const map: Record<string, string> = {
     VSKP: 'Visakhapatnam', EG: 'East Godavari', WG: 'West Godavari', ATP: 'Anantapur',

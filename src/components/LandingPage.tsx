@@ -10,7 +10,7 @@ interface LandingPageProps {
 
 export default function LandingPage({ onStart }: LandingPageProps) {
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between" id="landing-page">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between overflow-x-hidden" id="landing-page">
       {/* Top Header */}
       <header className="border-b border-slate-200 bg-white sticky top-0 z-50 px-4 sm:px-6 py-3.5 sm:py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
