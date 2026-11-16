@@ -14,8 +14,13 @@ export function getServiceAccount() {
     return null;
   }
 
-  // Format private key properly if it contains escaped newlines
-  const formattedPrivateKey = privateKey.replace(/\\n/g, '\n');
+  // Format private key properly if it contains escaped newlines or surrounding quotes
+  let formattedPrivateKey = privateKey.trim();
+  if ((formattedPrivateKey.startsWith('"') && formattedPrivateKey.endsWith('"')) ||
+      (formattedPrivateKey.startsWith("'") && formattedPrivateKey.endsWith("'"))) {
+    formattedPrivateKey = formattedPrivateKey.slice(1, -1);
+  }
+  formattedPrivateKey = formattedPrivateKey.replace(/\\n/g, '\n');
 
   return {
     type: "service_account",

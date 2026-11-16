@@ -19,6 +19,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/admin/colleges/:id",
+      "destination": "/api/admin/colleges?id=:id"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }

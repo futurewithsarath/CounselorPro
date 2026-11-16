@@ -143,7 +143,7 @@ export default function AdminDashboard({ onClose }: AdminDashboardProps) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(updates)
+        body: JSON.stringify({ id, ...updates })
       });
 
       const data = await res.json();
@@ -190,8 +190,10 @@ export default function AdminDashboard({ onClose }: AdminDashboardProps) {
       const res = await fetch(deleteUrl, {
         method: 'DELETE',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
-        }
+        },
+        body: JSON.stringify({ id, datasetId })
       });
 
       const data = await res.json();

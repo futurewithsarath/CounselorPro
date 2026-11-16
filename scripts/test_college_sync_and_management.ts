@@ -340,6 +340,25 @@ async function runCollegeSyncSuite() {
       assert(collegesDataSrc.includes('export async function invalidateCollegesCacheAndReload'), 'Must export invalidateCollegesCacheAndReload');
     });
 
+    test('vercel.json maps parameterized /api/admin/colleges/:id to serverless handler before SPA rewrite', () => {
+      const vercelJson = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
+      assert(Array.isArray(vercelJson.rewrites), 'vercel.json must define rewrites array');
+      const adminRewrite = vercelJson.rewrites.find((r: any) => r.source === '/api/admin/colleges/:id');
+      assert(adminRewrite, 'vercel.json must contain rewrite for /api/admin/colleges/:id');
+      assert.strictEqual(adminRewrite.destination, '/api/admin/colleges?id=:id', 'Must route to /api/admin/colleges?id=:id');
+      
+      const adminRewriteIndex = vercelJson.rewrites.findIndex((r: any) => r.source === '/api/admin/colleges/:id');
+      const spaRewriteIndex = vercelJson.rewrites.findIndex((r: any) => r.destination === '/index.html');
+      assert(adminRewriteIndex < spaRewriteIndex, 'Admin API rewrite must precede SPA fallback rewrite');
+    });
+
+    test('api/admin/colleges.ts supports query, body, and URL path parameter extraction', () => {
+      const adminCollegesSrc = fs.readFileSync('api/admin/colleges.ts', 'utf8');
+      assert(adminCollegesSrc.includes('req.query.id'), 'Must read ID from req.query.id');
+      assert(adminCollegesSrc.includes('req.body?.id'), 'Must read ID from req.body.id');
+      assert(adminCollegesSrc.includes('req.url.split'), 'Must parse ID from req.url path as fallback');
+    });
+
   } finally {
     // Restore or clean up dynamic store so no test pollution remains
     if (originalStoreContent !== null) {

@@ -59,6 +59,11 @@ if (fs.existsSync('vercel.json')) {
     return rewrites.some((r: any) => r.source.includes('api'));
   })());
 
+  check('Vercel rewrites map parameterized /api/admin/colleges/:id to serverless handler', (() => {
+    const rewrites = vercelConfig.rewrites || [];
+    return rewrites.some((r: any) => r.source === '/api/admin/colleges/:id' && r.destination.includes('/api/admin/colleges'));
+  })());
+
   check('Vercel includes public/data in serverless functions', (() => {
     return vercelConfig.functions?.['api/**/*.ts']?.includeFiles === 'public/data/**';
   })());

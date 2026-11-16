@@ -210,7 +210,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
       const queryId = req.query.id as string | undefined;
       const bodyId = (req.body?.id || req.body?.collegeId) as string | undefined;
-      const id = queryId || bodyId;
+      let id = queryId || bodyId;
+
+      // URL path extraction fallback for direct serverless route invocations
+      if (!id && req.url) {
+        const urlParts = req.url.split("?")[0].split("/");
+        const lastPart = urlParts[urlParts.length - 1];
+        if (lastPart && lastPart !== "colleges") {
+          id = decodeURIComponent(lastPart);
+        }
+      }
 
       if (!id || typeof id !== "string") {
         return res.status(400).json({ error: "College ID is required for deletion." });
@@ -261,7 +270,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (method === "PUT") {
     try {
-      const id = (req.query.id as string) || req.body?.id;
+      const queryId = req.query.id as string | undefined;
+      const bodyId = (req.body?.id || req.body?.collegeId) as string | undefined;
+      let id = queryId || bodyId;
+
+      // URL path extraction fallback for direct serverless route invocations
+      if (!id && req.url) {
+        const urlParts = req.url.split("?")[0].split("/");
+        const lastPart = urlParts[urlParts.length - 1];
+        if (lastPart && lastPart !== "colleges") {
+          id = decodeURIComponent(lastPart);
+        }
+      }
+
       if (!id || typeof id !== "string") {
         return res.status(400).json({ error: "College ID is required for update." });
       }
@@ -269,6 +290,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const datasetId = (req.query.datasetId as string | undefined) || req.body?.datasetId;
       const updates = { ...(req.body || {}) };
       delete updates.id; // Preserve immutable ID
+      delete updates.collegeId;
       updates.updatedAt = new Date().toISOString();
 
       const db = getFirestoreDb();
