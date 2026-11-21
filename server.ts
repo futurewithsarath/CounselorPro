@@ -190,8 +190,8 @@ try {
     }
     diagnostics.firestoreInit = "Disabled, local fallback enabled";
 
-    const defaultProjectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || "counselorpro";
-    if (getApps().length === 0) {
+    const defaultProjectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
+    if (defaultProjectId && getApps().length === 0) {
       initializeApp({ projectId: defaultProjectId });
     }
   }
@@ -353,7 +353,9 @@ app.post("/api/ai/analyze-choices", aiLimiter, async (req, res) => {
       await getAuth().verifyIdToken(token, true);
     } catch (authErr: any) {
       let isQaToken = false;
-      if (process.env.NODE_ENV !== "production") {
+      // Mock JWT development bypass is strictly isolated behind an explicit test-only environment flag
+      // It is disabled by default and NEVER permitted in production environments
+      if (process.env.NODE_ENV !== "production" && process.env.ENABLE_TEST_AUTH_BYPASS === "true") {
         try {
           const parts = token.split(".");
           if (parts.length === 3) {
@@ -366,7 +368,7 @@ app.post("/api/ai/analyze-choices", aiLimiter, async (req, res) => {
       }
 
       if (isQaToken) {
-        // Safe development QA bypass for mock JWT
+        // Safe development QA bypass for mock JWT strictly when ENABLE_TEST_AUTH_BYPASS=true
       } else {
         console.warn("[AI SERVICE] Failed to verify provided Firebase ID token:", authErr.message);
         return res.status(401).json({ error: "Invalid or expired Firebase ID token." });
@@ -530,13 +532,13 @@ Your sequence is generally **well-designed**. You have correctly followed the go
 // API: Expose public non-sensitive Firebase config for client-side SDK initialization
 app.get("/api/config/firebase", (req, res) => {
   res.json({
-    apiKey: process.env.FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY || "AIzaSyAgfXQFSoGjvSxmskHK4tu97Tt0DopngAg",
-    authDomain: process.env.FIREBASE_AUTH_DOMAIN || process.env.VITE_FIREBASE_AUTH_DOMAIN || "counselorpro.firebaseapp.com",
-    projectId: process.env.FIREBASE_PROJECT_ID || "counselorpro",
-    appId: process.env.FIREBASE_APP_ID || process.env.VITE_FIREBASE_APP_ID || "1:289926335025:web:a061b899b2a0a68476a310",
-    storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "counselorpro.firebasestorage.app",
-    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || "289926335025",
-    measurementId: process.env.FIREBASE_MEASUREMENT_ID || "G-RZME2N1DTD"
+    apiKey: process.env.FIREBASE_API_KEY || process.env.VITE_FIREBASE_API_KEY || "",
+    authDomain: process.env.FIREBASE_AUTH_DOMAIN || process.env.VITE_FIREBASE_AUTH_DOMAIN || "",
+    projectId: process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || "",
+    appId: process.env.FIREBASE_APP_ID || process.env.VITE_FIREBASE_APP_ID || "",
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET || process.env.VITE_FIREBASE_STORAGE_BUCKET || "",
+    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
+    measurementId: process.env.FIREBASE_MEASUREMENT_ID || process.env.VITE_FIREBASE_MEASUREMENT_ID || ""
   });
 });
 

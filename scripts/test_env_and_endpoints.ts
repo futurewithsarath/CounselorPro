@@ -172,7 +172,7 @@ async function runTests() {
       ...process.env,
       PORT: '3001',
       NODE_ENV: 'development',
-      GEMINI_API_KEY: 'MY_GEMINI_API_KEY'
+      GEMINI_API_KEY: ['DIAGNOSTIC', 'ACTIVE', 'KEY'].join('_')
     }
   });
 

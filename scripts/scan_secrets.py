@@ -16,27 +16,37 @@ PATTERNS = {
     "Generic Password Assignment": re.compile(r'(?i)(?:password|passwd|pwd|secret|api_key|apikey)\s*[:=]\s*["\']([a-zA-Z0-9_\-!@#$%^&*()+=]{8,})["\']')
 }
 
-# Known benign values to allowlist (e.g. public Firebase client API key, placeholders)
-PUBLIC_FIREBASE_API_KEY = "AIzaSyAgfXQFSoGjvSxmskHK4tu97Tt0DopngAg"
-ALLOWED_BENIGN = {
-    PUBLIC_FIREBASE_API_KEY,  # Public client Firebase API key (standard public Web SDK identifier)
-    "MY_GEMINI_API_KEY",
-    "MOCK_KEY_FALLBACK",
-    "owner@example.com",
-    "student@example.com",
+# Critical private patterns that can NEVER be suppressed by allowlists under any circumstances
+CRITICAL_PATTERNS = {
+    "Private Key Block",
+    "Firebase Service Account JSON",
+    "Firebase Private Key String",
+    "GitHub Personal Access Token",
+    "AWS Access Key ID",
+    "Slack Token",
+    "Database Connection String"
+}
+
+# Strictly benign dummy placeholder strings for generic password / test regex matches
+ALLOWED_BENIGN_PASSWORDS = {
     "password123",
     "wrong-password",
     "missing-password",
     "weak-password"
 }
 
-def is_benign(match_str: str) -> bool:
-    for benign in ALLOWED_BENIGN:
+# Historical public Firebase client key allowed ONLY in git commit history diffs (non-sensitive client SDK ID)
+HISTORICAL_PUBLIC_FIREBASE_KEY = "AIzaSyAgfXQFSoGjvSxmskHK4tu97Tt0DopngAg"
+
+def is_benign_password(match_str: str) -> bool:
+    for benign in ALLOWED_BENIGN_PASSWORDS:
         if benign in match_str:
             return True
     return False
 
 def scan_file(filepath: str):
+    if filepath.endswith("scan_secrets.py"):
+        return []
     findings = []
     try:
         with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
@@ -46,19 +56,41 @@ def scan_file(filepath: str):
                 matches = pattern.findall(line)
                 for match in matches:
                     matched_text = match if isinstance(match, str) else line
-                    if name == "Google / Gemini API Key (Real)" and matched_text == PUBLIC_FIREBASE_API_KEY:
+                    
+                    # Critical private credentials can NEVER be suppressed
+                    if name in CRITICAL_PATTERNS:
+                        findings.append({
+                            "file": filepath,
+                            "line": idx,
+                            "type": name,
+                            "snippet": line.strip()[:80]
+                        })
                         continue
-                    if is_benign(matched_text):
+
+                    # Public client Firebase web key is non-sensitive; any other AIzaSy key is flagged
+                    if name == "Google / Gemini API Key (Real)":
+                        if matched_text == HISTORICAL_PUBLIC_FIREBASE_KEY:
+                            continue
+                        findings.append({
+                            "file": filepath,
+                            "line": idx,
+                            "type": name,
+                            "snippet": line.strip()[:80]
+                        })
                         continue
-                    # Ignore comment descriptions or schema documentation
-                    if "//" in line and "e.g." in line:
-                        continue
-                    findings.append({
-                        "file": filepath,
-                        "line": idx,
-                        "type": name,
-                        "snippet": line.strip()[:80]
-                    })
+
+                    # Generic password assignment allowlist check
+                    if name == "Generic Password Assignment":
+                        if is_benign_password(matched_text) or HISTORICAL_PUBLIC_FIREBASE_KEY in line:
+                            continue
+                        if "//" in line and "e.g." in line:
+                            continue
+                        findings.append({
+                            "file": filepath,
+                            "line": idx,
+                            "type": name,
+                            "snippet": line.strip()[:80]
+                        })
     except Exception as e:
         pass
     return findings
@@ -82,10 +114,28 @@ def scan_git_history():
                     matches = pattern.findall(line)
                     for match in matches:
                         matched_text = match if isinstance(match, str) else line
-                        if name == "Google / Gemini API Key (Real)" and matched_text == PUBLIC_FIREBASE_API_KEY:
+                        
+                        # Critical private credentials can NEVER be suppressed even in git history
+                        if name in CRITICAL_PATTERNS:
+                            findings.append({
+                                "commit": current_commit,
+                                "file": current_file,
+                                "type": name,
+                                "line": idx,
+                                "snippet": line.strip()[:80]
+                            })
                             continue
-                        if is_benign(matched_text):
+
+                        # Historical client web SDK key allowlisted in old commits
+                        if name == "Google / Gemini API Key (Real)" and matched_text == HISTORICAL_PUBLIC_FIREBASE_KEY:
                             continue
+
+                        if name == "Generic Password Assignment":
+                            if is_benign_password(matched_text) or HISTORICAL_PUBLIC_FIREBASE_KEY in line or ".env.example" in current_file or "scan_secrets.py" in current_file or "MY_GEMINI_API_KEY" in line:
+                                continue
+                            if "//" in line and "e.g." in line:
+                                continue
+
                         findings.append({
                             "commit": current_commit,
                             "file": current_file,

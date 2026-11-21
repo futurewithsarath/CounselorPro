@@ -34,7 +34,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     } catch (authErr: any) {
       let isQaToken = false;
-      if (process.env.NODE_ENV !== "production") {
+      // Mock JWT development bypass is strictly isolated behind an explicit test-only environment flag
+      // It is disabled by default and NEVER permitted in production environments
+      if (process.env.NODE_ENV !== "production" && process.env.ENABLE_TEST_AUTH_BYPASS === "true") {
         try {
           const parts = token.split(".");
           if (parts.length === 3) {
@@ -47,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
 
       if (isQaToken) {
-        // Safe development QA bypass for mock JWT
+        // Safe development QA bypass for mock JWT strictly when ENABLE_TEST_AUTH_BYPASS=true
       } else {
         console.warn("[AI SERVICE] Failed to verify provided Firebase ID token:", authErr.message);
         return res.status(401).json({ error: "Invalid or expired Firebase ID token." });

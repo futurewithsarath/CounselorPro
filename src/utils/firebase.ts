@@ -36,13 +36,13 @@ import {
 } from 'firebase/firestore';
 
 export const firebaseConfig = {
-  apiKey: (import.meta as any).env?.VITE_FIREBASE_API_KEY || "AIzaSyAgfXQFSoGjvSxmskHK4tu97Tt0DopngAg",
-  authDomain: (import.meta as any).env?.VITE_FIREBASE_AUTH_DOMAIN || "counselorpro.firebaseapp.com",
-  projectId: (import.meta as any).env?.VITE_FIREBASE_PROJECT_ID || "counselorpro",
-  storageBucket: (import.meta as any).env?.VITE_FIREBASE_STORAGE_BUCKET || "counselorpro.firebasestorage.app",
-  messagingSenderId: (import.meta as any).env?.VITE_FIREBASE_MESSAGING_SENDER_ID || "289926335025",
-  appId: (import.meta as any).env?.VITE_FIREBASE_APP_ID || "1:289926335025:web:a061b899b2a0a68476a310",
-  measurementId: (import.meta as any).env?.VITE_FIREBASE_MEASUREMENT_ID || "G-RZME2N1DTD"
+  apiKey: (import.meta as any).env?.VITE_FIREBASE_API_KEY || "",
+  authDomain: (import.meta as any).env?.VITE_FIREBASE_AUTH_DOMAIN || "",
+  projectId: (import.meta as any).env?.VITE_FIREBASE_PROJECT_ID || "",
+  storageBucket: (import.meta as any).env?.VITE_FIREBASE_STORAGE_BUCKET || "",
+  messagingSenderId: (import.meta as any).env?.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
+  appId: (import.meta as any).env?.VITE_FIREBASE_APP_ID || "",
+  measurementId: (import.meta as any).env?.VITE_FIREBASE_MEASUREMENT_ID || ""
 };
 
 // Singleton initialization with error handling

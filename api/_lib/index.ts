@@ -86,8 +86,8 @@ export function getFirestoreDb() {
         : getApp();
       firestoreDb = getFirestore(adminApp);
     } else {
-      const defaultProjectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || "counselorpro";
-      if (getApps().length === 0) {
+      const defaultProjectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
+      if (defaultProjectId && getApps().length === 0) {
         initializeApp({ projectId: defaultProjectId });
       }
     }
