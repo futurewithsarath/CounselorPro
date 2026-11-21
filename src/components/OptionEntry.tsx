@@ -12,9 +12,10 @@ interface OptionEntryProps {
   onUpdateOptions: (options: WebOption[]) => void;
   onNext: () => void;
   onBack: () => void;
+  onOpenAiRefinement?: () => void;
 }
 
-export default function OptionEntry({ profile, selectedOptions, onUpdateOptions, onNext, onBack }: OptionEntryProps) {
+export default function OptionEntry({ profile, selectedOptions, onUpdateOptions, onNext, onBack, onOpenAiRefinement }: OptionEntryProps) {
   const [mobileTab, setMobileTab] = useState<'available' | 'selected'>('available');
   const [search, setSearch] = useState('');
   const [selectedBranch, setSelectedBranch] = useState('ALL');
@@ -914,6 +915,21 @@ export default function OptionEntry({ profile, selectedOptions, onUpdateOptions,
             >
               {mobileTab === 'available' ? `Switch to My Choices (${selectedOptions.length})` : `Browse More Colleges`}
             </button>
+          )}
+
+          {onOpenAiRefinement && (
+            <MotionButton
+              variant="secondary"
+              size="lg"
+              onClick={onOpenAiRefinement}
+              disabled={selectedOptions.length === 0}
+              id="ai-strategy-review-btn"
+              leftIcon={<Sparkles className="w-4 h-4 text-emerald-600" />}
+              className="w-full sm:w-auto text-emerald-700 hover:text-emerald-800 border-emerald-200 hover:bg-emerald-50"
+              title="Get Gemini AI strategic review of your choices list"
+            >
+              AI Strategy Review
+            </MotionButton>
           )}
 
           <MotionButton

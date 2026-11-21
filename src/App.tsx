@@ -26,7 +26,7 @@ import UserNav from './components/auth/UserNav';
 import { useAuth } from './context/AuthContext';
 
 import { StudentProfile, WebOption, ExamType, JeeStudentProfile, JeePracticeChoice, NeetStudentProfile, NeetChoice } from './types';
-import { Compass, Sparkles, CheckCircle, GraduationCap, Database, Save, RefreshCw, BookOpen, Stethoscope } from 'lucide-react';
+import { Compass, Sparkles, CheckCircle, GraduationCap, Database, Save, RefreshCw, BookOpen, Stethoscope, AlertCircle } from 'lucide-react';
 import { loadRealCollegesForExam, COLLEGES_SOURCE, getDefaultDatasetYear } from './data/colleges';
 
 type StepType = 'LANDING' | 'SELECT_EXAM' | 'ENTER_DETAILS' | 'ENTRY_WORKFLOW' | 'REFINEMENT' | 'FINAL_REVIEW' | 'SUCCESS' | 'COMING_SOON';
@@ -52,6 +52,9 @@ export default function App() {
     userProfile,
     isSuperAdmin,
     isLoading: authLoading,
+    isProfileReady,
+    profileError,
+    retryProfileSync,
     openAuthModal,
     intendedDestination,
     clearIntendedDestination
@@ -277,18 +280,20 @@ export default function App() {
     return () => window.cancelAnimationFrame(frame);
   }, [step, isAdminRoute]);
 
-  // CRITICAL SECURITY & PRODUCT GUARD: Login Required for Counselling Practice
+  // CRITICAL SECURITY & PRODUCT GUARD: Login & Profile Readiness Required for Counselling Practice
   useEffect(() => {
     const practiceSteps: StepType[] = ['ENTER_DETAILS', 'ENTRY_WORKFLOW', 'FINAL_REVIEW', 'SUCCESS'];
-    if (practiceSteps.includes(step) && !user && !authLoading) {
-      openAuthModal('login', 'Please log in to start your counselling practice.', {
-        step,
-        exam: profile.exam,
-        stream: profile.stream
-      });
+    if (practiceSteps.includes(step) && (!user || !isProfileReady) && !authLoading) {
+      if (!user) {
+        openAuthModal('login', 'Please log in to start your counselling practice.', {
+          step,
+          exam: profile.exam,
+          stream: profile.stream
+        });
+      }
       setStep('SELECT_EXAM');
     }
-  }, [step, user, authLoading, profile.exam, profile.stream, openAuthModal]);
+  }, [step, user, isProfileReady, authLoading, profile.exam, profile.stream, openAuthModal]);
 
   // RESTORE INTENDED MODULE & RESUME PRACTICE AFTER LOGIN
   useEffect(() => {
@@ -370,6 +375,8 @@ export default function App() {
       setStep('ENTRY_WORKFLOW');
     } else if (step === 'ENTRY_WORKFLOW') {
       setStep('FINAL_REVIEW');
+    } else if (step === 'REFINEMENT') {
+      setStep('FINAL_REVIEW');
     }
   };
 
@@ -382,6 +389,8 @@ export default function App() {
       setStep('SELECT_EXAM');
     } else if (step === 'ENTRY_WORKFLOW') {
       setStep('ENTER_DETAILS');
+    } else if (step === 'REFINEMENT') {
+      setStep('ENTRY_WORKFLOW');
     } else if (step === 'FINAL_REVIEW') {
       setStep('ENTRY_WORKFLOW');
     }
@@ -415,6 +424,7 @@ export default function App() {
       case 'SELECT_EXAM': return 1;
       case 'ENTER_DETAILS': return 2;
       case 'ENTRY_WORKFLOW': return 3;
+      case 'REFINEMENT': return 4;
       case 'FINAL_REVIEW': return 4;
       default: return 0;
     }
@@ -614,6 +624,19 @@ export default function App() {
                 </MotionButton>
               )}
 
+              {profile.exam === 'NEET_UG' && (
+                <MotionButton
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setIsNeetLearningOpen(true)}
+                  leftIcon={<BookOpen className="w-3.5 h-3.5" />}
+                  className="!rounded-lg !py-1 sm:!py-1.5 !px-2 sm:!px-2.5 !text-[10px] sm:!text-xs font-mono font-bold"
+                  title="Open NEET UG MCC & NMC Counselling Guide"
+                >
+                  <span className="hidden sm:inline">NEET GUIDE</span>
+                </MotionButton>
+              )}
+
               {step !== 'LANDING' && step !== 'SUCCESS' && (
                 <MotionButton
                   variant="primary"
@@ -632,6 +655,23 @@ export default function App() {
             </div>
           </div>
         </header>
+      )}
+
+      {/* Profile Sync Error / Readiness Banner */}
+      {user && !isProfileReady && !authLoading && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center justify-between text-xs text-amber-900 shadow-xs">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>{profileError || 'Initializing your student profile in the database...'}</span>
+          </div>
+          <button 
+            type="button" 
+            onClick={() => retryProfileSync()} 
+            className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg shadow-xs cursor-pointer transition-colors"
+          >
+            Retry Profile Sync
+          </button>
+        </div>
       )}
 
       {/* Main content viewport */}
@@ -736,8 +776,18 @@ export default function App() {
                     onUpdateOptions={setSelectedOptions}
                     onNext={() => setStep('FINAL_REVIEW')}
                     onBack={() => setStep('ENTER_DETAILS')}
+                    onOpenAiRefinement={() => setStep('REFINEMENT')}
                   />
                 )
+              )}
+
+              {step === 'REFINEMENT' && (
+                <ChoiceRefinement
+                  profile={profile}
+                  selectedOptions={selectedOptions}
+                  onNext={() => setStep('FINAL_REVIEW')}
+                  onBack={() => setStep('ENTRY_WORKFLOW')}
+                />
               )}
 
               {step === 'FINAL_REVIEW' && (
@@ -763,6 +813,7 @@ export default function App() {
                     selectedOptions={selectedOptions}
                     onBack={() => setStep('ENTRY_WORKFLOW')}
                     onFinish={() => setStep('SUCCESS')}
+                    onOpenAiRefinement={() => setStep('REFINEMENT')}
                   />
                 )
               )}

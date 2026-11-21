@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { StudentProfile, WebOption, ChatMessage } from '../types';
 import { hasLocalAreaCutoffs } from '../data/colleges';
+import { useAuth } from '../context/AuthContext';
 import { ArrowLeft, ArrowRight, Sparkles, MessageSquare, Compass, Send, CheckCircle2, ChevronRight, AlertTriangle, ShieldCheck } from 'lucide-react';
 
 interface ChoiceRefinementProps {
@@ -11,6 +12,7 @@ interface ChoiceRefinementProps {
 }
 
 export default function ChoiceRefinement({ profile, selectedOptions, onNext, onBack }: ChoiceRefinementProps) {
+  const { user } = useAuth();
   const [analysis, setAnalysis] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -22,11 +24,15 @@ export default function ChoiceRefinement({ profile, selectedOptions, onNext, onB
     const triggerAnalysis = async () => {
       setLoading(true);
       try {
+        const token = user ? await user.getIdToken().catch(() => null) : null;
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         const response = await fetch('/api/ai/analyze-choices', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers,
           body: JSON.stringify({
             profile: { ...profile, cutoffLocalAreaScope: hasLocalAreaCutoffs() ? 'REPORTED' : 'NOT_REPORTED' },
             options: selectedOptions,
@@ -43,7 +49,7 @@ export default function ChoiceRefinement({ profile, selectedOptions, onNext, onB
             }
           ]);
         } else {
-          setAnalysis('Sorry, I failed to generate your strategic counselling report.');
+          setAnalysis(data.error || 'Sorry, I failed to generate your strategic counselling report.');
         }
       } catch (err) {
         console.error(err);
@@ -54,7 +60,7 @@ export default function ChoiceRefinement({ profile, selectedOptions, onNext, onB
     };
 
     triggerAnalysis();
-  }, [profile, selectedOptions]);
+  }, [profile, selectedOptions, user]);
 
   // Handle student questions in the chat assistant panel
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -73,26 +79,19 @@ export default function ChoiceRefinement({ profile, selectedOptions, onNext, onB
     setSendingMessage(true);
 
     try {
-      // Prompt query with option context
-      const prompt = `
-      You are an expert South Indian admissions counselor assisting a student for ${profile.exam}.
-      Student Rank: ${profile.rank}, Category: ${profile.category}, ${hasLocalAreaCutoffs() ? `Local region: ${profile.region}` : 'The historical source does not split cutoff ranks by local area'}, Gender: ${profile.gender}.
-      They have selected the following web options: ${selectedOptions.map(o => `${o.priority}. ${o.collegeCode} [${o.branch}]`).join(', ')}.
-      
-      They asked: "${originalInput}"
-      
-      Respond directly, simply, and expertly to their question. Help them figure out exactly what decisions to make to maximize college placement.
-      Keep it brief, tactical, and positive.
-      `;
+      const token = user ? await user.getIdToken().catch(() => null) : null;
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
 
       const response = await fetch('/api/ai/analyze-choices', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
-          profile,
+          profile: { ...profile, cutoffLocalAreaScope: hasLocalAreaCutoffs() ? 'REPORTED' : 'NOT_REPORTED' },
           options: selectedOptions,
+          userQuery: originalInput,
         }),
       });
 
@@ -102,7 +101,7 @@ export default function ChoiceRefinement({ profile, selectedOptions, onNext, onB
         ...prev,
         {
           sender: 'assistant',
-          text: data.analysis || "I received your question! Always ensure you have a healthy mix of top, target, and safety colleges based on cutoffs.",
+          text: data.analysis || data.error || "I received your question! Always ensure you have a healthy mix of top, target, and safety colleges based on cutoffs.",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         }
       ]);

@@ -22,6 +22,7 @@ export default function AuthModal() {
   const { 
     authModalOpen, 
     closeAuthModal, 
+    clearRecaptcha,
     authModalTab, 
     setAuthModalTab,
     authPromptMessage,
@@ -53,7 +54,7 @@ export default function AuthModal() {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Reset internal fields when modal opens or tab changes
+  // Reset internal fields when modal opens or tab changes, and clean up reCAPTCHA
   useEffect(() => {
     if (authModalOpen) {
       setErrorMsg('');
@@ -61,8 +62,17 @@ export default function AuthModal() {
       setIsLoading(false);
       setOtpStep('number');
       setOtpCode(['', '', '', '', '', '']);
+    } else {
+      clearRecaptcha();
     }
-  }, [authModalOpen, authModalTab]);
+  }, [authModalOpen, authModalTab, clearRecaptcha]);
+
+  // Clean up on component unmount
+  useEffect(() => {
+    return () => {
+      clearRecaptcha();
+    };
+  }, [clearRecaptcha]);
 
   // Timer for OTP resend countdown
   useEffect(() => {
@@ -81,26 +91,49 @@ export default function AuthModal() {
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
+
     setErrorMsg('');
     setSuccessMsg('');
 
-    if (!email.trim() || !password) {
-      setErrorMsg('Please enter both your email and password.');
+    const trimmedEmail = email.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!trimmedEmail) {
+      setErrorMsg('Please enter your email address.');
+      return;
+    }
+    if (!emailRegex.test(trimmedEmail)) {
+      setErrorMsg('Please enter a valid email address.');
+      return;
+    }
+    if (!password) {
+      setErrorMsg('Please enter your password.');
       return;
     }
 
     setIsLoading(true);
     try {
-      await loginWithEmail(email, password);
+      await loginWithEmail(trimmedEmail, password);
       // loginWithEmail closes the modal on success
     } catch (err: any) {
       console.error('[AUTH ERROR]', err);
-      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+      if (err.code === 'auth/invalid-credential') {
         setErrorMsg('Invalid email or password. Please verify your credentials.');
+      } else if (err.code === 'auth/wrong-password') {
+        setErrorMsg('Incorrect password. Please try again or reset your password.');
+      } else if (err.code === 'auth/user-not-found') {
+        setErrorMsg('No account found with this email. Please check your email or sign up.');
+      } else if (err.code === 'auth/invalid-email') {
+        setErrorMsg('Please enter a valid email address.');
+      } else if (err.code === 'auth/user-disabled') {
+        setErrorMsg('This user account has been disabled by an administrator.');
       } else if (err.code === 'auth/too-many-requests') {
-        setErrorMsg('Too many failed attempts. Please reset your password or try again later.');
+        setErrorMsg('Access to this account has been temporarily disabled due to many failed login attempts. Please reset your password or try again later.');
+      } else if (err.code === 'auth/network-request-failed') {
+        setErrorMsg('Network connection failed. Please check your internet connection.');
       } else {
-        setErrorMsg(err.message || 'Failed to sign in. Please check your connection.');
+        setErrorMsg(err.message || 'Failed to sign in. Please check your credentials.');
       }
     } finally {
       setIsLoading(false);
@@ -109,14 +142,24 @@ export default function AuthModal() {
 
   const handleEmailRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
+
     setErrorMsg('');
     setSuccessMsg('');
 
-    if (!displayName.trim()) {
+    const trimmedName = displayName.trim();
+    const trimmedEmail = email.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!trimmedName) {
       setErrorMsg('Please enter your full name.');
       return;
     }
-    if (!email.trim()) {
+    if (!trimmedEmail) {
+      setErrorMsg('Please enter your email address.');
+      return;
+    }
+    if (!emailRegex.test(trimmedEmail)) {
       setErrorMsg('Please enter a valid email address.');
       return;
     }
@@ -129,17 +172,28 @@ export default function AuthModal() {
       return;
     }
 
+    const trimmedPhone = phoneNumber.replace(/\D/g, '');
+    if (trimmedPhone && trimmedPhone.length < 10) {
+      setErrorMsg('Please enter a valid 10-digit mobile number, or leave it blank.');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      await registerWithEmail(email, password, displayName, phoneNumber);
+      await registerWithEmail(trimmedEmail, password, trimmedName, trimmedPhone || undefined);
+      closeAuthModal();
     } catch (err: any) {
       console.error('[REGISTER ERROR]', err);
       if (err.code === 'auth/email-already-in-use') {
         setErrorMsg('An account with this email already exists. Please sign in instead.');
       } else if (err.code === 'auth/invalid-email') {
         setErrorMsg('The email address provided is improperly formatted.');
+      } else if (err.code === 'auth/weak-password') {
+        setErrorMsg('Password is too weak. Please use at least 6 characters.');
+      } else if (err.code === 'auth/network-request-failed') {
+        setErrorMsg('Network connection failed. Please check your internet connection.');
       } else {
-        setErrorMsg(err.message || 'Failed to create account.');
+        setErrorMsg(err.message || 'Failed to create account. Please try again.');
       }
     } finally {
       setIsLoading(false);
@@ -147,6 +201,7 @@ export default function AuthModal() {
   };
 
   const handleGoogleSignIn = async () => {
+    if (isLoading) return;
     setErrorMsg('');
     setSuccessMsg('');
     setIsLoading(true);
@@ -154,7 +209,11 @@ export default function AuthModal() {
       await loginWithGoogle();
     } catch (err: any) {
       console.error('[GOOGLE SIGN-IN ERROR]', err);
-      if (err.code !== 'auth/popup-closed-by-user') {
+      if (err.code === 'auth/popup-closed-by-user') {
+        // User closed the popup, silently disregard
+      } else if (err.code === 'auth/network-request-failed') {
+        setErrorMsg('Network connection failed. Please check your connection.');
+      } else {
         setErrorMsg(err.message || 'Google sign-in could not be completed.');
       }
     } finally {
@@ -162,14 +221,16 @@ export default function AuthModal() {
     }
   };
 
-  const handleSendPhoneOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSendPhoneOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (isLoading) return;
+
     setErrorMsg('');
     setSuccessMsg('');
 
     const cleanedNumber = phoneNumber.replace(/\D/g, '');
-    if (cleanedNumber.length < 10) {
-      setErrorMsg('Please enter a valid 10-digit mobile number.');
+    if (cleanedNumber.length !== 10 && !(cleanedNumber.length === 12 && cleanedNumber.startsWith('91'))) {
+      setErrorMsg('Please enter a valid 10-digit Indian mobile number.');
       return;
     }
 
@@ -188,11 +249,25 @@ export default function AuthModal() {
       setConfirmationResult(result);
       setOtpStep('otp');
       setResendCountdown(30);
-      setSuccessMsg(`6-digit OTP code sent to ${fullPhoneNumber}`);
+      setSuccessMsg(`6-digit verification code sent to ${fullPhoneNumber}`);
     } catch (err: any) {
       console.error('[PHONE OTP SEND ERROR]', err);
-      if (err.code === 'auth/billing-not-enabled') {
+      if (err.code === 'auth/operation-not-allowed') {
+        setErrorMsg('SMS unable to be sent until this region is enabled by the app developer (auth/operation-not-allowed). In Firebase Console: Authentication > Sign-in method > Phone > SMS Region Policy > Enable India (+91). Alternatively, sign in using Email or Google.');
+      } else if (err.code === 'auth/billing-not-enabled') {
         setErrorMsg('Phone authentication requires Firebase Blaze plan or test numbers. Please use Google or Email sign-in.');
+      } else if (err.code === 'auth/invalid-phone-number') {
+        setErrorMsg('The mobile number provided is invalid. Please enter a valid 10-digit number.');
+      } else if (err.code === 'auth/missing-phone-number') {
+        setErrorMsg('Please provide a mobile number.');
+      } else if (err.code === 'auth/quota-exceeded') {
+        setErrorMsg('Daily SMS quota for this project has been exceeded. Please sign in with Email or Google.');
+      } else if (err.code === 'auth/too-many-requests') {
+        setErrorMsg('Too many OTP attempts detected. Please wait a few minutes before trying again.');
+      } else if (err.code === 'auth/captcha-check-failed') {
+        setErrorMsg('reCAPTCHA verification failed. Please try again or refresh the page.');
+      } else if (err.code === 'auth/network-request-failed') {
+        setErrorMsg('Network connection failed. Please check your internet connection.');
       } else {
         setErrorMsg(err.message || 'Failed to send OTP code. Please check the number.');
       }
@@ -203,6 +278,8 @@ export default function AuthModal() {
 
   const handleVerifyPhoneOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
+
     setErrorMsg('');
     setSuccessMsg('');
 
@@ -223,7 +300,16 @@ export default function AuthModal() {
       await verifyOtp(confirmationResult, code);
     } catch (err: any) {
       console.error('[OTP VERIFY ERROR]', err);
-      setErrorMsg('Invalid or expired OTP code. Please check and try again.');
+      if (err.code === 'auth/invalid-verification-code') {
+        setErrorMsg('Invalid 6-digit OTP code. Please verify the code and try again.');
+      } else if (err.code === 'auth/code-expired') {
+        setErrorMsg('The OTP code has expired. Please click Resend Code to receive a new one.');
+      } else if (err.code === 'auth/session-expired') {
+        setErrorMsg('The SMS verification session has expired. Please request a new code.');
+        setOtpStep('number');
+      } else {
+        setErrorMsg(err.message || 'Invalid or expired OTP code. Please check and try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -249,21 +335,37 @@ export default function AuthModal() {
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
     setErrorMsg('');
     setSuccessMsg('');
 
-    if (!email.trim()) {
+    const trimmedEmail = email.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!trimmedEmail) {
       setErrorMsg('Please enter your registered email address.');
+      return;
+    }
+    if (!emailRegex.test(trimmedEmail)) {
+      setErrorMsg('Please enter a valid email address.');
       return;
     }
 
     setIsLoading(true);
     try {
-      await resetPassword(email);
-      setSuccessMsg(`Password reset instructions have been dispatched to ${email}. Check your inbox or spam folder.`);
+      await resetPassword(trimmedEmail);
+      setSuccessMsg(`Password reset instructions have been dispatched to ${trimmedEmail}. Check your inbox or spam folder.`);
     } catch (err: any) {
       console.error('[PASSWORD RESET ERROR]', err);
-      setErrorMsg(err.message || 'Failed to send reset email.');
+      if (err.code === 'auth/user-not-found') {
+        setErrorMsg('No account found with this email address.');
+      } else if (err.code === 'auth/invalid-email') {
+        setErrorMsg('Please enter a valid email address.');
+      } else if (err.code === 'auth/too-many-requests') {
+        setErrorMsg('Too many reset requests. Please wait a moment before trying again.');
+      } else {
+        setErrorMsg(err.message || 'Failed to send reset email.');
+      }
     } finally {
       setIsLoading(false);
     }

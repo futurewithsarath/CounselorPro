@@ -2,39 +2,71 @@ import { initializeApp, cert, getApps, getApp } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { GoogleGenAI } from "@google/genai";
 import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 
-export function getServiceAccount() {
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const privateKeyId = process.env.FIREBASE_PRIVATE_KEY_ID;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const clientId = process.env.FIREBASE_CLIENT_ID;
+export function getServiceAccount(): {
+  type: string;
+  project_id: string;
+  private_key_id?: string;
+  private_key: string;
+  client_email: string;
+  client_id?: string;
+  auth_uri?: string;
+  token_uri?: string;
+  auth_provider_x509_cert_url?: string;
+  client_x509_cert_url?: string;
+  universe_domain?: string;
+} | null {
+  const projectId = (process.env.FIREBASE_PROJECT_ID || "").trim();
+  const privateKeyId = (process.env.FIREBASE_PRIVATE_KEY_ID || "").trim();
+  const privateKey = (process.env.FIREBASE_PRIVATE_KEY || "").trim();
+  const clientEmail = (process.env.FIREBASE_CLIENT_EMAIL || "").trim();
+  const clientId = (process.env.FIREBASE_CLIENT_ID || "").trim();
 
-  if (!projectId || !privateKey || !clientEmail) {
-    return null;
+  if (projectId && privateKey && clientEmail) {
+    // Format private key properly if it contains escaped newlines or surrounding quotes
+    let formattedPrivateKey = privateKey;
+    if ((formattedPrivateKey.startsWith('"') && formattedPrivateKey.endsWith('"')) ||
+        (formattedPrivateKey.startsWith("'") && formattedPrivateKey.endsWith("'"))) {
+      formattedPrivateKey = formattedPrivateKey.slice(1, -1);
+    }
+    formattedPrivateKey = formattedPrivateKey.replace(/\\n/g, '\n').trim();
+
+    if (formattedPrivateKey.includes("PRIVATE KEY") && formattedPrivateKey.includes("BEGIN") && formattedPrivateKey.includes("END")) {
+      return {
+        type: "service_account",
+        project_id: projectId,
+        private_key_id: privateKeyId || "",
+        private_key: formattedPrivateKey,
+        client_email: clientEmail,
+        client_id: clientId || "",
+        auth_uri: "https://accounts.google.com/o/oauth2/auth",
+        token_uri: "https://oauth2.googleapis.com/token",
+        auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+        client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(clientEmail)}`,
+        universe_domain: "googleapis.com"
+      };
+    }
   }
 
-  // Format private key properly if it contains escaped newlines or surrounding quotes
-  let formattedPrivateKey = privateKey.trim();
-  if ((formattedPrivateKey.startsWith('"') && formattedPrivateKey.endsWith('"')) ||
-      (formattedPrivateKey.startsWith("'") && formattedPrivateKey.endsWith("'"))) {
-    formattedPrivateKey = formattedPrivateKey.slice(1, -1);
+  // Check GOOGLE_APPLICATION_CREDENTIALS or local serviceAccountKey.json fallback
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS && fs.existsSync(process.env.GOOGLE_APPLICATION_CREDENTIALS)) {
+    try {
+      const json = JSON.parse(fs.readFileSync(process.env.GOOGLE_APPLICATION_CREDENTIALS, 'utf8'));
+      if (json.project_id && json.private_key && json.client_email) return json;
+    } catch {}
   }
-  formattedPrivateKey = formattedPrivateKey.replace(/\\n/g, '\n');
 
-  return {
-    type: "service_account",
-    project_id: projectId,
-    private_key_id: privateKeyId || "",
-    private_key: formattedPrivateKey,
-    client_email: clientEmail,
-    client_id: clientId || "",
-    auth_uri: "https://accounts.google.com/o/oauth2/auth",
-    token_uri: "https://oauth2.googleapis.com/token",
-    auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-    client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(clientEmail)}`,
-    universe_domain: "googleapis.com"
-  };
+  const localKeyPath = path.join(process.cwd(), 'serviceAccountKey.json');
+  if (fs.existsSync(localKeyPath)) {
+    try {
+      const json = JSON.parse(fs.readFileSync(localKeyPath, 'utf8'));
+      if (json.project_id && json.private_key && json.client_email) return json;
+    } catch {}
+  }
+
+  return null;
 }
 
 // Lazy initialization of Firebase Admin
@@ -53,16 +85,14 @@ export function getFirestoreDb() {
         ? initializeApp({ credential: cert(serviceAccount as any), projectId: serviceAccount.project_id })
         : getApp();
       firestoreDb = getFirestore(adminApp);
-      console.log("Firebase Admin successfully initialized on the serverless function.");
     } else {
-      const defaultProjectId = process.env.FIREBASE_PROJECT_ID || "counselorpro";
+      const defaultProjectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || "counselorpro";
       if (getApps().length === 0) {
         initializeApp({ projectId: defaultProjectId });
       }
-      console.log("Firebase credentials not fully set up in environment. Default app initialized for token verification. Firestore features will fall back gracefully.");
     }
   } catch (err) {
-    console.log("Failed to initialize Firebase Admin in serverless lib:", err);
+    console.warn("[FIREBASE ADMIN] Lazy initialization notice in serverless helper:", err);
   }
   firestoreInitialized = true;
   return firestoreDb;
@@ -350,20 +380,21 @@ export function validateProfileAndOptions(profile: any, options: any): { valid: 
 // AI Client
 let aiClient: GoogleGenAI | null = null;
 
-export function getAIClient(): GoogleGenAI {
-  const currentApiKey = process.env.GEMINI_API_KEY;
+export function getAIClient(): GoogleGenAI | null {
+  const currentApiKey = (process.env.GEMINI_API_KEY || "").trim();
   if (!currentApiKey) {
     if (process.env.NODE_ENV === "production") {
       throw new Error("GEMINI_API_KEY environment variable is not configured in production.");
     }
+    return null;
   }
 
   if (!aiClient) {
     aiClient = new GoogleGenAI({
-      apiKey: currentApiKey || "MOCK_KEY_FALLBACK",
+      apiKey: currentApiKey,
       httpOptions: {
         headers: {
-          'User-Agent': 'aistudio-build',
+          'User-Agent': 'counselorpro-serverless',
         }
       }
     });

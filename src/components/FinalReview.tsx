@@ -13,9 +13,10 @@ interface FinalReviewProps {
   selectedOptions: WebOption[];
   onBack: () => void;
   onFinish: () => void;
+  onOpenAiRefinement?: () => void;
 }
 
-export default function FinalReview({ profile, selectedOptions, onBack, onFinish }: FinalReviewProps) {
+export default function FinalReview({ profile, selectedOptions, onBack, onFinish, onOpenAiRefinement }: FinalReviewProps) {
   const [allotment, setAllotment] = useState<MockAllotmentResult | null>(null);
   const [runningAllotment, setRunningAllotment] = useState<boolean>(false);
 
@@ -268,8 +269,8 @@ export default function FinalReview({ profile, selectedOptions, onBack, onFinish
             )}
           </AnimatePresence>
 
-          {/* Back Trigger */}
-          <div className="flex justify-start">
+          {/* Back Trigger and AI Refinement Button */}
+          <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2">
             <MotionButton
               variant="secondary"
               size="sm"
@@ -278,6 +279,19 @@ export default function FinalReview({ profile, selectedOptions, onBack, onFinish
             >
               Adjust Options Sequence
             </MotionButton>
+
+            {onOpenAiRefinement && (
+              <MotionButton
+                variant="secondary"
+                size="sm"
+                onClick={onOpenAiRefinement}
+                leftIcon={<Sparkles className="w-4 h-4 text-emerald-600" />}
+                className="text-emerald-700 hover:text-emerald-800 border-emerald-200 hover:bg-emerald-50 text-xs font-semibold"
+                title="Get Gemini AI strategic review of your options"
+              >
+                AI Strategy Review
+              </MotionButton>
+            )}
           </div>
         </div>
       ) : (

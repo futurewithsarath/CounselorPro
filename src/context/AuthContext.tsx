@@ -46,6 +46,9 @@ interface AuthContextType {
   userProfile: UserProfile | null;
   idToken: string | null;
   isLoading: boolean;
+  isProfileReady: boolean;
+  profileError: string | null;
+  retryProfileSync: () => Promise<UserProfile | null>;
   authStatus: AuthStatus;
   isAdmin: boolean;
   isSuperAdmin: boolean;
@@ -60,6 +63,7 @@ interface AuthContextType {
   clearIntendedDestination: () => void;
   openAuthModal: (tab?: AuthModalTab, promptMessage?: string, destination?: any) => void;
   closeAuthModal: () => void;
+  clearRecaptcha: () => void;
   loginWithEmail: (email: string, password: string) => Promise<User>;
   registerWithEmail: (email: string, password: string, displayName: string, phoneNumber?: string) => Promise<User>;
   loginWithGoogle: () => Promise<User>;
@@ -90,6 +94,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
   const [idToken, setIdToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isProfileReady, setIsProfileReady] = useState<boolean>(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const [authModalTab, setAuthModalTab] = useState<AuthModalTab>('login');
   const [authPromptMessage, setAuthPromptMessage] = useState<string | null>(null);
@@ -127,14 +133,125 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuthModalOpen(true);
   }, [setIntendedDestination]);
 
+  const inFlightSyncRef = useRef<Map<string, Promise<UserProfile>>>(new Map());
+  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
+
+  const clearRecaptcha = useCallback(() => {
+    if (recaptchaVerifierRef.current) {
+      try {
+        recaptchaVerifierRef.current.clear();
+      } catch (e) {
+        console.warn('[AUTH] Error during recaptcha clear:', e);
+      }
+      recaptchaVerifierRef.current = null;
+    }
+    const container = document.getElementById('recaptcha-container');
+    if (container) {
+      container.innerHTML = '';
+    }
+  }, []);
+
   const closeAuthModal = useCallback(() => {
     setAuthModalOpen(false);
     setAuthPromptMessage(null);
+    clearRecaptcha();
+  }, [clearRecaptcha]);
+  // Idempotent and recoverable student profile initialization with exponential backoff
+  const initializeFirestoreProfile = useCallback(async (
+    firebaseUser: User,
+    options: { displayName?: string; phoneNumber?: string; maxRetries?: number; timeoutMs?: number } = {}
+  ): Promise<UserProfile> => {
+    if (!db) {
+      throw new Error('Firestore is not initialized.');
+    }
+
+    const { displayName, phoneNumber, maxRetries = 2, timeoutMs = 3500 } = options;
+    const userRef = doc(db, 'users', firebaseUser.uid);
+
+    let claimsRole: string | undefined;
+    try {
+      const tokenResult = await firebaseUser.getIdTokenResult();
+      claimsRole = tokenResult.claims.role as string | undefined;
+    } catch (e) {
+      console.warn('[AUTH] Could not read ID token claims in init:', e);
+    }
+    const resolvedRole: UserRole = claimsRole === 'super_admin' ? 'super_admin' : 'student';
+
+    const providerIds = firebaseUser.providerData.map(p => p.providerId);
+    if (providerIds.length === 0 && firebaseUser.phoneNumber) {
+      providerIds.push('phone');
+    }
+
+    let lastError: any = null;
+
+    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+      try {
+        const profileOp = (async (): Promise<UserProfile> => {
+          const docSnap = await getDoc(userRef);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            const profile: UserProfile = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: data.displayName || displayName || firebaseUser.displayName || 'Student',
+              phoneNumber: data.phoneNumber || phoneNumber || firebaseUser.phoneNumber || null,
+              photoURL: data.photoURL || firebaseUser.photoURL || null,
+              providerIds: Array.from(new Set([...providerIds, ...(data.providerIds || [])])),
+              role: resolvedRole,
+              accountStatus: (data.accountStatus as any) || 'active',
+              createdAt: data.createdAt,
+              updatedAt: serverTimestamp(),
+              lastLoginAt: serverTimestamp()
+            };
+
+            await setDoc(userRef, {
+              ...profile,
+              role: resolvedRole,
+              updatedAt: serverTimestamp(),
+              lastLoginAt: serverTimestamp()
+            }, { merge: true });
+
+            return profile;
+          } else {
+            const newProfile: UserProfile = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: displayName?.trim() || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Student',
+              phoneNumber: phoneNumber?.trim() || firebaseUser.phoneNumber || null,
+              photoURL: firebaseUser.photoURL || null,
+              providerIds: providerIds.length > 0 ? providerIds : ['password'],
+              role: resolvedRole,
+              accountStatus: 'active',
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+              lastLoginAt: serverTimestamp()
+            };
+
+            await setDoc(userRef, newProfile);
+            return newProfile;
+          }
+        })();
+
+        const result = await Promise.race([
+          profileOp,
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error(`Firestore profile operation timed out after ${timeoutMs}ms (attempt ${attempt}/${maxRetries + 1})`)), timeoutMs)
+          )
+        ]);
+
+        return result;
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`[AUTH] Profile initialization attempt ${attempt} failed:`, err.message || err);
+        if (attempt <= maxRetries) {
+          await new Promise(res => setTimeout(res, attempt * 500));
+        }
+      }
+    }
+
+    throw new Error(`Profile initialization failed after ${maxRetries + 1} attempts: ${lastError?.message || 'Database unavailable'}`);
   }, []);
 
-  const inFlightSyncRef = useRef<Map<string, Promise<UserProfile>>>(new Map());
-
-  // Synchronize user profile strictly enforcing server-side Custom Claims
   const syncUserProfile = useCallback(async (firebaseUser: User, forceRefresh: boolean = false): Promise<UserProfile> => {
     // Deduplicate simultaneous sync calls for the same user
     const existingSync = inFlightSyncRef.current.get(firebaseUser.uid);
@@ -143,7 +260,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const syncPromise = (async (): Promise<UserProfile> => {
-      // 1. Authoritative verification of Custom Claims (use fast cached token unless forced)
       let claimsRole: string | undefined;
       try {
         const tokenResult = await firebaseUser.getIdTokenResult(forceRefresh);
@@ -151,102 +267,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (e) {
         console.warn('[AUTH] Could not read ID token claims:', e);
       }
-
-      // Role is authoritative from Custom Claims. If claim is super_admin -> super_admin; else strictly student.
       const resolvedRole: UserRole = claimsRole === 'super_admin' ? 'super_admin' : 'student';
 
-      const providerIds = firebaseUser.providerData.map(p => p.providerId);
-      if (providerIds.length === 0 && firebaseUser.phoneNumber) {
-        providerIds.push('phone');
-      }
-
-      const baseProfile: UserProfile = {
-        uid: firebaseUser.uid,
-        email: firebaseUser.email,
-        displayName: firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'Student'),
-        phoneNumber: firebaseUser.phoneNumber,
-        photoURL: firebaseUser.photoURL,
-        providerIds,
-        role: resolvedRole,
-        accountStatus: 'active',
-        lastLoginAt: new Date().toISOString()
-      };
-
-      // Optimistically update memory & cache immediately for instant UI responsiveness (<5ms)
-      setUserProfile(prev => (prev && prev.uid === firebaseUser.uid ? { ...prev, role: resolvedRole } : baseProfile));
-      try {
-        localStorage.setItem('counselor_cached_profile', JSON.stringify(baseProfile));
-      } catch {}
-
-      // Asynchronous, non-blocking background synchronization with Firestore
-      // Never blocks auth state resolution, routing decisions, or page transitions (<10ms instant response)
       if (db) {
-        (async () => {
+        try {
+          const profile = await initializeFirestoreProfile(firebaseUser, {
+            maxRetries: 2,
+            timeoutMs: 3500
+          });
+          setUserProfile(profile);
+          setIsProfileReady(true);
+          setProfileError(null);
           try {
-            const userRef = doc(db, 'users', firebaseUser.uid);
-            const docSnap = await getDoc(userRef);
+            localStorage.setItem('counselor_cached_profile', JSON.stringify(profile));
+          } catch {}
+          return profile;
+        } catch (syncErr: any) {
+          console.warn('[AUTH] Firestore profile sync failed:', syncErr.message || syncErr);
+          setIsProfileReady(false);
+          setProfileError(syncErr.message || 'Unable to sync profile from database.');
 
-            if (docSnap.exists()) {
-              const data = docSnap.data();
-              const profile: UserProfile = {
-                uid: firebaseUser.uid,
-                email: firebaseUser.email,
-                displayName: data.displayName || firebaseUser.displayName || baseProfile.displayName,
-                phoneNumber: data.phoneNumber || firebaseUser.phoneNumber || null,
-                photoURL: data.photoURL || firebaseUser.photoURL || null,
-                providerIds: Array.from(new Set([...providerIds, ...(data.providerIds || [])])),
-                // Authoritative Custom Claim always takes precedence over doc
-                role: resolvedRole,
-                accountStatus: (data.accountStatus as any) || 'active',
-                createdAt: data.createdAt,
-                updatedAt: serverTimestamp(),
-                lastLoginAt: serverTimestamp()
-              };
-
-              // Update document with latest sign-in timestamp & authoritative role
-              try {
-                await setDoc(userRef, {
-                  ...profile,
-                  role: resolvedRole,
-                  updatedAt: serverTimestamp(),
-                  lastLoginAt: serverTimestamp()
-                }, { merge: true });
-              } catch (updateErr) {
-                console.warn('[AUTH] Profile sync write ignored by rules:', updateErr);
-              }
-
-              setUserProfile(profile);
-              try {
-                localStorage.setItem('counselor_cached_profile', JSON.stringify(profile));
-              } catch {}
-            } else {
-              // Document does not exist yet: create user profile with role strictly defaulted
-              const newProfile: UserProfile = {
-                ...baseProfile,
-                role: resolvedRole,
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-                lastLoginAt: serverTimestamp()
-              };
-
-              try {
-                await setDoc(userRef, newProfile);
-              } catch (writeErr) {
-                console.warn('[AUTH] Initial profile write to Firestore bypassed:', writeErr);
-              }
-
-              setUserProfile(newProfile);
-              try {
-                localStorage.setItem('counselor_cached_profile', JSON.stringify(newProfile));
-              } catch {}
-            }
-          } catch (err) {
-            console.warn('[AUTH] Background Firestore profile sync completed with notice:', err);
-          }
-        })().catch(() => {});
+          const fallbackProfile: UserProfile = {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName || 'Student',
+            phoneNumber: firebaseUser.phoneNumber,
+            photoURL: firebaseUser.photoURL,
+            providerIds: firebaseUser.providerData.map(p => p.providerId),
+            role: resolvedRole,
+            accountStatus: 'active',
+            lastLoginAt: new Date().toISOString()
+          };
+          setUserProfile(fallbackProfile);
+          return fallbackProfile;
+        }
+      } else {
+        const localProfile: UserProfile = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName || 'Student',
+          phoneNumber: firebaseUser.phoneNumber,
+          photoURL: firebaseUser.photoURL,
+          providerIds: firebaseUser.providerData.map(p => p.providerId),
+          role: resolvedRole,
+          accountStatus: 'active',
+          lastLoginAt: new Date().toISOString()
+        };
+        setUserProfile(localProfile);
+        setIsProfileReady(true);
+        return localProfile;
       }
-
-      return baseProfile;
     })();
 
     syncPromise.finally(() => {
@@ -255,7 +325,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     inFlightSyncRef.current.set(firebaseUser.uid, syncPromise);
     return syncPromise;
-  }, []);
+  }, [initializeFirestoreProfile]);
+
+  const retryProfileSync = useCallback(async (): Promise<UserProfile | null> => {
+    if (!user) return null;
+    setProfileError(null);
+    return await syncUserProfile(user, true);
+  }, [user, syncUserProfile]);
 
   // Listen to auth state changes
   useEffect(() => {
@@ -278,6 +354,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           setUserProfile(null);
           setIdToken(null);
+          setIsProfileReady(true);
+          setProfileError(null);
           localStorage.removeItem('counselor_cached_profile');
         }
       } catch (err) {
@@ -310,37 +388,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const credential = await createUserWithEmailAndPassword(auth, email.trim(), password);
 
     if (displayName.trim()) {
-      await updateProfile(credential.user, {
-        displayName: displayName.trim()
-      });
+      try {
+        await updateProfile(credential.user, {
+          displayName: displayName.trim()
+        });
+      } catch (profileErr) {
+        console.warn('[AUTH] Could not update profile displayName:', profileErr);
+      }
     }
 
     const token = await credential.user.getIdToken();
     setIdToken(token);
+    setUser(credential.user);
 
-    // Initial student user profile
+    // Idempotent, recoverable student profile creation with retries
     if (db) {
       try {
-        const userRef = doc(db, 'users', credential.user.uid);
-        await setDoc(userRef, {
+        const profile = await initializeFirestoreProfile(credential.user, {
+          displayName: displayName.trim(),
+          phoneNumber: phoneNumber?.trim(),
+          maxRetries: 1,
+          timeoutMs: 2500
+        });
+        setUserProfile(profile);
+        setIsProfileReady(true);
+        setProfileError(null);
+        try {
+          localStorage.setItem('counselor_cached_profile', JSON.stringify(profile));
+        } catch {}
+      } catch (initErr: any) {
+        console.warn('[AUTH] Profile creation notice during registration:', initErr);
+        setIsProfileReady(false);
+        setProfileError(`Profile initialization failed: ${initErr.message || 'timed out'}`);
+
+        const fallbackProfile: UserProfile = {
           uid: credential.user.uid,
           email: credential.user.email,
-          displayName: displayName.trim(),
+          displayName: displayName.trim() || credential.user.email?.split('@')[0] || 'Student',
           phoneNumber: phoneNumber?.trim() || null,
           photoURL: null,
           providerIds: ['password'],
-          role: 'student', // All public registrations are students
+          role: 'student',
           accountStatus: 'active',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          lastLoginAt: serverTimestamp()
-        });
-      } catch (e) {
-        console.warn('Initial student doc creation skipped:', e);
+          lastLoginAt: new Date().toISOString()
+        };
+        setUserProfile(fallbackProfile);
       }
+    } else {
+      setIsProfileReady(true);
     }
 
-    await syncUserProfile(credential.user);
     closeAuthModal();
     return credential.user;
   };
@@ -368,16 +465,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const container = document.getElementById(containerId);
       if (!container) return null;
-      container.innerHTML = ''; // reset
+
+      // Safely clear any previously initialized reCAPTCHA widget instance
+      if (recaptchaVerifierRef.current) {
+        try {
+          recaptchaVerifierRef.current.clear();
+        } catch (clearErr) {
+          console.warn('[AUTH] Previous RecaptchaVerifier clear notice:', clearErr);
+        }
+        recaptchaVerifierRef.current = null;
+      }
+
+      container.innerHTML = ''; // reset container DOM
+
       const verifier = new RecaptchaVerifier(auth, containerId, {
         size: 'invisible',
         callback: () => {
           // reCAPTCHA solved
         },
         'expired-callback': () => {
-          console.warn('[AUTH] reCAPTCHA expired, please try again.');
+          console.warn('[AUTH] reCAPTCHA expired, please request code again.');
         }
       });
+
+      recaptchaVerifierRef.current = verifier;
       return verifier;
     } catch (e) {
       console.error('[AUTH] reCAPTCHA initialization failed:', e);
@@ -421,12 +532,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async (): Promise<void> => {
+    clearRecaptcha();
     if (auth) {
       await signOut(auth);
     }
     setUser(null);
     setUserProfile(null);
     setIdToken(null);
+    setIsProfileReady(true);
+    setProfileError(null);
     localStorage.removeItem('counselor_cached_profile');
   };
 
@@ -444,6 +558,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     userProfile,
     idToken,
     isLoading,
+    isProfileReady,
+    profileError,
+    retryProfileSync,
     authStatus,
     isAdmin,
     isSuperAdmin,
@@ -458,6 +575,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clearIntendedDestination,
     openAuthModal,
     closeAuthModal,
+    clearRecaptcha,
     loginWithEmail,
     registerWithEmail,
     loginWithGoogle,

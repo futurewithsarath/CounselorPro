@@ -11,7 +11,9 @@ coverage/
 *.pem
 serviceAccountKey.json
 service-account*.json
+counselorpro-*.json
 *key.json
+*.key
 __pycache__/
 *.pyc
 *.pdf
